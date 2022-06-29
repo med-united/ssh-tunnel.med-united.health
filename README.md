@@ -1,4 +1,4 @@
-# ssh-tunnel Project
+# Ssh-tunnel Project
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
