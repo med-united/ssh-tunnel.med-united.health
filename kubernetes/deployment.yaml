@@ -1,17 +1,17 @@
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: ssh-tunnel-certificate
-  namespace: default
-spec:
-  dnsNames:
-    - ssh-tunnel.med-united.health
-  secretName: ssh-tunnel-tls
-  issuerRef:
-    name: letsencrypt-cluster-issuer
-    kind: ClusterIssuer
-
----
+#apiVersion: cert-manager.io/v1
+#kind: Certificate
+#metadata:
+#  name: ssh-tunnel-certificate
+#  namespace: default
+#spec:
+#  dnsNames:
+#    - ssh-tunnel.med-united.health
+#  secretName: ssh-tunnel-tls
+#  issuerRef:
+#    name: letsencrypt-cluster-issuer
+#    kind: ClusterIssuer
+#
+#---
 
 apiVersion: apps/v1
 kind: Deployment
@@ -20,7 +20,7 @@ metadata:
   labels:
     app: ssh-tunnel
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: ssh-tunnel
@@ -34,7 +34,18 @@ spec:
           image: 765415433338.dkr.ecr.eu-central-1.amazonaws.com/ssh-tunnel:$IMAGE_TAG
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 22
+          volumeMounts:
+            - name: ssh-tunnel-volume
+              subPath: sshd_config
+              mountPath: /etc/ssh/sshd_config
+            - name: ssh-tunnel-volume
+              subPath: authorized_keys
+              mountPath: /root/.ssh/authorized_keys
+      volumes:
+        - name: ssh-tunnel-volume
+          configMap:
+            name: ssh-tunnel-config
 
 ---
 
@@ -43,37 +54,53 @@ apiVersion: v1
 metadata:
   name: ssh-tunnel
 spec:
+  type: LoadBalancer
+  ports:
+    -port: 22222
+    targetPort: 22
   selector:
     app: ssh-tunnel
-  ports:
-    - port: 8080
 
 ---
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: ssh-tunnel
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type
-    nginx.ingress.kubernetes.io/cors-allow-methods: POST, GET, OPTIONS
-    nginx.ingress.kubernetes.io/cors-expose-headers: X-Custom-Header
-    nginx.ingress.kubernetes.io/cors-max-age: "86400"
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-spec:
-  tls:
-    - hosts:
-        - ssh-tunnel.med-united.health
-      secretName: ssh-tunnel-tls
-  rules:
-    - host: ssh-tunnel.med-united.health
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: ssh-tunnel
-                port:
-                  number: 8080
+  name: ssh-tunnel-config
+data:
+  sshd_config: |
+    PasswordAuthentication no
+    ChallengeResponseAuthentication no
+    UsePAM no
+  authorized_keys: |
+    ssh-rsa  AAAAB3NzaC1yc2EAAAADAQABAAABAQDHP0lVoS7GxcidaAP5x84JucEti9/G+Bq54ECXfuVwoEgxGr9LN2SsDL4xFDEWkp4/5ty4PkDF5ZyXHd7w7uOEhVEcvCbsAM18nX2+6soEzU+WfET22DlpnxjvXiCRL79ogQmC3m6GYoDfCHy4u9elVbQRM66ZfAk9XH/POAFXDApjErsCYPDqNpeGNK7wJr9IAIP0dpfbPD2HVlU8fAnw364uAJ/+76U41/4Yy7THqQg6+9YFx4bfd3oSS19dV6uvzZfYjMvBQVsvojFYmFgqMhdke2s8JHUVIaABVWg6AZPCTXSnajQyUzPGDFeoyUJ9mQwfUGqDcc2vcm7OufbX rsa-key-20220404
+
+#---
+
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: ssh-tunnel
+#  annotations:
+#    kubernetes.io/ingress.class: "nginx"
+#    nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type
+#    nginx.ingress.kubernetes.io/cors-allow-methods: POST, GET, OPTIONS
+#    nginx.ingress.kubernetes.io/cors-expose-headers: X-Custom-Header
+#    nginx.ingress.kubernetes.io/cors-max-age: "86400"
+#    nginx.ingress.kubernetes.io/enable-cors: "true"
+#spec:
+#  tls:
+#    - hosts:
+#        - ssh-tunnel.med-united.health
+#      secretName: ssh-tunnel-tls
+#  rules:
+#    - host: ssh-tunnel.med-united.health
+#      http:
+#        paths:
+#          - path: /
+#            pathType: Prefix
+#            backend:
+#              service:
+#                name: ssh-tunnel
+#                port:
+#                  number: 22
