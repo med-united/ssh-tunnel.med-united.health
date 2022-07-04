@@ -72,6 +72,7 @@ data:
     PasswordAuthentication no
     ChallengeResponseAuthentication no
     UsePAM no
+    UsePrivilegeSeparation no
   authorized_keys: |
     ssh-rsa  AAAAB3NzaC1yc2EAAAADAQABAAABAQDHP0lVoS7GxcidaAP5x84JucEti9/G+Bq54ECXfuVwoEgxGr9LN2SsDL4xFDEWkp4/5ty4PkDF5ZyXHd7w7uOEhVEcvCbsAM18nX2+6soEzU+WfET22DlpnxjvXiCRL79ogQmC3m6GYoDfCHy4u9elVbQRM66ZfAk9XH/POAFXDApjErsCYPDqNpeGNK7wJr9IAIP0dpfbPD2HVlU8fAnw364uAJ/+76U41/4Yy7THqQg6+9YFx4bfd3oSS19dV6uvzZfYjMvBQVsvojFYmFgqMhdke2s8JHUVIaABVWg6AZPCTXSnajQyUzPGDFeoyUJ9mQwfUGqDcc2vcm7OufbX rsa-key-20220404
 
