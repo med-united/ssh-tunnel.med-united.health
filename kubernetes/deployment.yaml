@@ -56,8 +56,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    -port: 22222
-    targetPort: 22
+    - port: 22222
+      targetPort: 22
   selector:
     app: ssh-tunnel
 
