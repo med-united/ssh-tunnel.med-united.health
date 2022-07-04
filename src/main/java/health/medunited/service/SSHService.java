@@ -28,7 +28,7 @@ public class SSHService {
 
     private static Logger log = Logger.getLogger(SSHService.class.getName());
 
-    public static final int PORT = 1049;
+    public static final int PORT = 22222;
 
     @Inject
     SSHTunnelManager sSHTunnelManager;
