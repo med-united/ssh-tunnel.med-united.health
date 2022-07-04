@@ -98,6 +98,8 @@ RUN microdnf install -y openssh-server
 RUN cd ../../etc
 RUN echo 'sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin' >> passwd
 RUN echo 'sshd:x:74:' >> group
+RUN cd ssh
+RUN ssh-keygen -A
 
 CMD ["/usr/sbin/sshd","-D"]
 
