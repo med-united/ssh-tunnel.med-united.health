@@ -95,7 +95,9 @@ ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 USER root
 
 RUN microdnf install -y openssh-server
-RUN useradd -u 33 -g 33 -c sshd -d / sshd
+RUN cd ../../etc
+RUN echo 'sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin' >> passwd
+RUN echo 'sshd:x:74:' >> group
 
 CMD ["/usr/sbin/sshd","-D"]
 
