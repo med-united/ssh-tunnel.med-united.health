@@ -99,5 +99,6 @@ RUN cd ../../etc
 RUN echo 'sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin' >> passwd
 RUN echo 'sshd:x:74:' >> group
 RUN ssh-keygen -A
+RUN /usr/sbin/sshd -D
 
 
