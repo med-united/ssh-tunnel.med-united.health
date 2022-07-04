@@ -95,6 +95,7 @@ ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 USER root
 
 RUN microdnf install -y openssh-server
+RUN useradd -u 33 -g 33 -c sshd -d / sshd
 
 CMD ["/usr/sbin/sshd","-D"]
 
