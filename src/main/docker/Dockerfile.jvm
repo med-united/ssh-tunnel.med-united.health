@@ -100,5 +100,4 @@ RUN echo 'sshd:x:74:74:Privilege-separated SSH:/var/empty/sshd:/sbin/nologin' >>
 RUN echo 'sshd:x:74:' >> group
 RUN ssh-keygen -A
 
-CMD ["/usr/sbin/sshd","-D"]
 
