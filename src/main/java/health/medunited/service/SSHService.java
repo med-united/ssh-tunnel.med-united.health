@@ -28,7 +28,7 @@ public class SSHService {
 
     private static Logger log = Logger.getLogger(SSHService.class.getName());
 
-    public static final int PORT = 22222;
+    public static final int PORT = 22;
 
     @Inject
     SSHTunnelManager sSHTunnelManager;
@@ -42,7 +42,7 @@ public class SSHService {
         sshServer.setPort(PORT);
         sshServer.setHost("0.0.0.0");
         sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
-        sshServer.setPasswordAuthenticator((username, password, session) -> sSHTunnelManager.acceptSSHConnection(username, password));
+        sshServer.setPasswordAuthenticator((username, password, session) -> true);
         sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
             @Override
             protected boolean checkAcceptance(String request, Session session, SshdSocketAddress target) {
