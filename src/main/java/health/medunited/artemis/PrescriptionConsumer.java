@@ -18,9 +18,9 @@ public class PrescriptionConsumer implements Runnable{
 
     private final ExecutorService scheduler = Executors.newSingleThreadExecutor();
 
-    private volatile String prescription;
+    private volatile Object prescription;
 
-    public String getTest() {
+    public Object getTest() {
         return prescription;
     }
 
@@ -39,11 +39,11 @@ public class PrescriptionConsumer implements Runnable{
             while (true) {
                 Message message = consumer.receive();
                 if (message == null) return;
-                prescription = message.getBody(String.class);
+                prescription = message.getBody(Object.class);
                 System.out.println(prescription);
             }
         } catch (JMSException e) {
-            throw new RuntimeException(e);
+            System.out.println(e.getMessage());
         }
     }
 
