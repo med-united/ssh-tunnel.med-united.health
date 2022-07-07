@@ -35,6 +35,7 @@ public class PrescriptionConsumer implements Runnable{
     @Override
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+            System.out.println("I'M HERE");
             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"));
             while (true) {
                 Message message = consumer.receive();
