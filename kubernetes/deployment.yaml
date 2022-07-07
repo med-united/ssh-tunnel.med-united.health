@@ -32,17 +32,6 @@ spec:
                 secretKeyRef:
                   name: broker-secret
                   key: password
-          volumeMounts:
-            - name: ssh-tunnel-volume
-              subPath: sshd_config
-              mountPath: /etc/ssh/sshd_config
-            - name: ssh-tunnel-volume
-              subPath: authorized_keys
-              mountPath: /root/.ssh/authorized_keys
-      volumes:
-        - name: ssh-tunnel-volume
-          configMap:
-            name: ssh-tunnel-config
 
 ---
 
