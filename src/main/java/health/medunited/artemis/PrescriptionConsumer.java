@@ -1,5 +1,6 @@
 package health.medunited.artemis;
 
+import health.medunited.model.PrescriptionRequest;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
@@ -35,17 +36,34 @@ public class PrescriptionConsumer implements Runnable{
     @Override
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-            System.out.println("I'M HERE");
             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"));
             while (true) {
                 Message message = consumer.receive();
-                if (message == null) return;
-                prescription = message.getBody(Object.class);
-                System.out.println(prescription);
+                String practiceManagementTranslation = message.getObjectProperty("practiceManagementTranslation").toString();
+                String receiverPublicKeyFingerprint = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
+                if (message instanceof BytesMessage) {
+                    String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
+                    PrescriptionRequest prescriptionRequest = new PrescriptionRequest(practiceManagementTranslation, receiverPublicKeyFingerprint, fhirBundle);
+                    System.out.println("Prescription request content -----");
+                    System.out.println(prescriptionRequest.getPracticeManagementTranslation());
+                    System.out.println(prescriptionRequest.getReceiverPublicKeyFingerprint());
+                    System.out.println(prescriptionRequest.getFhirBundle());
+                }
+                else {
+                    return;
+                }
             }
         } catch (JMSException e) {
             System.out.println(e.getMessage());
         }
     }
+
+    private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {
+        byte[] byteData = new byte[(int) message.getBodyLength()];
+        message.readBytes(byteData);
+        message.reset();
+        return new String(byteData);
+    }
+
 
 }
