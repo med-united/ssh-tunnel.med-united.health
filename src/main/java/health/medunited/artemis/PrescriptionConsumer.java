@@ -10,16 +10,19 @@ import javax.inject.Inject;
 import javax.jms.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 @ApplicationScoped
-public class PrescriptionConsumer implements Runnable{
+public class PrescriptionConsumer implements Runnable {
+
+    private static Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
     @Inject
     ConnectionFactory connectionFactory;
 
     private final ExecutorService scheduler = Executors.newSingleThreadExecutor();
 
-    private volatile Object prescription;
+    private PrescriptionRequest prescription;
 
     public Object getTest() {
         return prescription;
@@ -35,35 +38,21 @@ public class PrescriptionConsumer implements Runnable{
 
     @Override
     public void run() {
-        try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-            JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"));
+        try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
+             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"))) {
             while (true) {
                 Message message = consumer.receive();
-                String practiceManagementTranslation = message.getObjectProperty("practiceManagementTranslation").toString();
-                String receiverPublicKeyFingerprint = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
-                if (message instanceof BytesMessage) {
-                    String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
-                    PrescriptionRequest prescriptionRequest = new PrescriptionRequest(practiceManagementTranslation, receiverPublicKeyFingerprint, fhirBundle);
-                    System.out.println("Prescription request content -----");
-                    System.out.println(prescriptionRequest.getPracticeManagementTranslation());
-                    System.out.println(prescriptionRequest.getReceiverPublicKeyFingerprint());
-                    System.out.println(prescriptionRequest.getFhirBundle());
-                }
-                else {
-                    return;
+                if(message == null) return;
+                if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
+                    String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
+                    String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
+                    prescription = new PrescriptionRequest(practiceManagement, publicKey, message.getBody(String.class));
+                    log.info("Content of Bundle: " + prescription.getFhirBundle());
                 }
             }
         } catch (JMSException e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         }
     }
-
-    private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {
-        byte[] byteData = new byte[(int) message.getBodyLength()];
-        message.readBytes(byteData);
-        message.reset();
-        return new String(byteData);
-    }
-
 
 }
