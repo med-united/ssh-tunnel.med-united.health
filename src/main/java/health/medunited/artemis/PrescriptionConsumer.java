@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class PrescriptionConsumer implements Runnable {
 
-    private static Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
+    private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
     @Inject
     ConnectionFactory connectionFactory;
@@ -39,15 +39,17 @@ public class PrescriptionConsumer implements Runnable {
     @Override
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
-             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"))) {
+             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"), "receiverPublicKeyFingerprint = 't2med'")) {
             while (true) {
                 Message message = consumer.receive();
-                if(message == null) return;
+                if (message == null) return;
                 if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
                     String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
                     String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
                     prescription = new PrescriptionRequest(practiceManagement, publicKey, message.getBody(String.class));
                     log.info("Content of Bundle: " + prescription.getFhirBundle());
+                } else {
+                    log.info("Invalid content");
                 }
             }
         } catch (JMSException e) {

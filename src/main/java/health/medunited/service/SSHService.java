@@ -30,8 +30,11 @@ public class SSHService {
 
     public static final int PORT = 22;
 
+//    @Inject
+//    SSHTunnelManager sSHTunnelManager;
+
     @Inject
-    SSHTunnelManager sSHTunnelManager;
+    SSHManager sshManager;
 
     @Inject
     Event<SSHClientPortForwardEvent> eventSSHClientPortForwardEvent;
@@ -42,7 +45,7 @@ public class SSHService {
         sshServer.setPort(PORT);
         sshServer.setHost("0.0.0.0");
         sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
-        sshServer.setPasswordAuthenticator((username, password, session) -> true);
+        sshServer.setPublickeyAuthenticator((username, key, session) -> sshManager.prepareKeyForStorage(key));
         sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
             @Override
             protected boolean checkAcceptance(String request, Session session, SshdSocketAddress target) {
@@ -52,6 +55,8 @@ public class SSHService {
         });
         sshServer.setSessionHeartbeat(HeartbeatType.IGNORE, Duration.ofSeconds(5));
         sshServer.setShellFactory(new ProcessShellFactory("/bin/sh", "/bin/sh", "-i", "-l"));
+        //For Windows prompt
+        //sshServer.setShellFactory(new ProcessShellFactory("cmd", "cmd"));
         sshServer.setForwarderFactory(DefaultForwarderFactory.INSTANCE);
         try {
             log.info("Starting SSH server on port: " + PORT);
