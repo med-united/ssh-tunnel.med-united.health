@@ -35,6 +35,7 @@ spec:
           volumeMounts:
             - name: ssh-volume
               mountPath: /home/jboss/.ssh/authorized_keys
+              subPath: authorized_keys
       volumes:
         - name: ssh-volume
 
