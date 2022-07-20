@@ -32,20 +32,6 @@ spec:
                 secretKeyRef:
                   name: broker-secret
                   key: password
-          volumeMounts:
-            - name: ssh-tunnel-dir
-              mountPath: /home/jboss/.ssh
-            - name: ssh-tunnel-file
-              mountPath: /home/jboss/.ssh/authorized_keys.txt
-      volumes:
-        - name: ssh-tunnel-dir
-          hostPath:
-            path: /home/jboss/.ssh
-            type: DirectoryOrCreate
-        - name: ssh-tunnel-file
-          hostPath:
-            path: /home/jboss/.ssh/authorized_keys.txt
-            type: FileOrCreate
 
 ---
 
