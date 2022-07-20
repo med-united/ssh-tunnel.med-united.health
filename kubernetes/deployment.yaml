@@ -34,8 +34,8 @@ spec:
                   key: password
           volumeMounts:
             - name: ssh-tunnel-volume
-              mountPath: /home/jboss/.ssh/authorized_keys
-              subPath: authorized_keys
+              mountPath: /home/jboss/.ssh/authorized_keys.txt
+              subPath: authorized_keys.txt
       volumes:
         - name: ssh-tunnel-volume
           emptyDir: {}
