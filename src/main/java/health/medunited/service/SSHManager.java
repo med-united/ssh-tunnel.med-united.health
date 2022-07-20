@@ -1,6 +1,5 @@
 package health.medunited.service;
 
-import org.apache.sshd.server.config.keys.AuthorizedKeysAuthenticator;
 import org.bouncycastle.util.encoders.Base64;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -9,13 +8,14 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.LocalDateTime;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+
+import static health.medunited.Constants.AUTHORIZED_KEYS_FILE;
 
 @ApplicationScoped
 public class SSHManager {
@@ -48,11 +48,10 @@ public class SSHManager {
     }
 
     private void storeKeyInAuthorizedKeysFile(String encodedKey) {
-        Path path = AuthorizedKeysAuthenticator.getDefaultAuthorizedKeysFile();
-        try (Stream<String> lines = Files.lines(path)) {
+        try (Stream<String> lines = Files.lines(AUTHORIZED_KEYS_FILE)) {
             if (lines.noneMatch(l -> l.contains(encodedKey))) {
                 String content = "\n" + SSH_RSA + " " + encodedKey + " " + LocalDateTime.now();
-                Files.write(path, content.getBytes(StandardCharsets.UTF_8), StandardOpenOption.APPEND);
+                Files.write(AUTHORIZED_KEYS_FILE, content.getBytes(StandardCharsets.UTF_8), StandardOpenOption.APPEND);
             }
         } catch (IOException e) {
             e.printStackTrace();
