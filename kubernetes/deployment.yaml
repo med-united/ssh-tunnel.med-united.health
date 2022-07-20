@@ -34,11 +34,13 @@ spec:
                   key: password
           volumeMounts:
             - name: ssh-tunnel-volume
-              mountPath: /home/jboss/.ssh/authorized_keys.txt
+              mountPath: /home/jboss/.ssh/authorized_keys
               subPath: authorized_keys.txt
       volumes:
         - name: ssh-tunnel-volume
-          emptyDir: {}
+          hostPath:
+            path: /ome/jboss/.ssh/authorized_keys
+            type: FileOrCreate
 
 ---
 
