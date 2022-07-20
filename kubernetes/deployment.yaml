@@ -43,9 +43,9 @@ spec:
             path: /home/jboss/.ssh
             type: DirectoryOrCreate
         - name: ssh-tunnel-file
-            hostPath:
-              path: /home/jboss/.ssh/authorized_keys.txt
-              type: FileOrCreate
+          hostPath:
+            path: /home/jboss/.ssh/authorized_keys.txt
+            type: FileOrCreate
 
 ---
 
