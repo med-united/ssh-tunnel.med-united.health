@@ -33,8 +33,8 @@ spec:
                   name: broker-secret
                   key: password
           volumeMounts:
-            - - name: ssh-tunnel-volume
-                  mountPath: /home/jboss/.ssh
+            - name: ssh-tunnel-volume
+              mountPath: /home/jboss/.ssh
             - name: ssh-tunnel-volume
               mountPath: /home/jboss/.ssh/authorized_keys.txt
       volumes:
