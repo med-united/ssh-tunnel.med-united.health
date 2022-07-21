@@ -88,6 +88,11 @@
       <artifactId>rest-assured</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>10.2.1.jre11</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
