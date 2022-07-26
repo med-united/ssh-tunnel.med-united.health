@@ -46,7 +46,8 @@ public class PrescriptionConsumer implements Runnable {
                 if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
                     String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
                     String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
-                    prescription = new PrescriptionRequest(practiceManagement, publicKey, message.getBody(String.class));
+                    String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
+                    prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
                     log.info("Content of Bundle: " + prescription.getFhirBundle());
                 } else {
                     log.info("Invalid content");
@@ -55,6 +56,13 @@ public class PrescriptionConsumer implements Runnable {
         } catch (JMSException e) {
             e.printStackTrace();
         }
+    }
+
+    private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {
+        byte[] byteData = new byte[(int) message.getBodyLength()];
+        message.readBytes(byteData);
+        message.reset();
+        return new String(byteData);
     }
 
 }
