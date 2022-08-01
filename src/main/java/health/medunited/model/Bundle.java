@@ -4,11 +4,13 @@ public class Bundle {
     private final Practitioner practitioner;
     private final Patient patient;
     private final MedicationStatement medicationStatement;
+    private final Pharmacy pharmacy;
 
-    public Bundle(Practitioner practitioner, Patient patient, MedicationStatement medicationStatement) {
+    public Bundle(Practitioner practitioner, Patient patient, MedicationStatement medicationStatement, Pharmacy pharmacy) {
         this.practitioner = practitioner;
         this.patient = patient;
         this.medicationStatement = medicationStatement;
+        this.pharmacy = pharmacy;
     }
 
     public Practitioner getPractitioner() {
@@ -19,5 +21,8 @@ public class Bundle {
     }
     public MedicationStatement getMedicationStatement() {
         return medicationStatement;
+    }
+    public Pharmacy getPharmacy() {
+        return pharmacy;
     }
 }

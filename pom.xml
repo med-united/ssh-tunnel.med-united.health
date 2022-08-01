@@ -93,6 +93,12 @@
       <artifactId>mssql-jdbc</artifactId>
       <version>10.2.1.jre11</version>
     </dependency>
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+      <version>20220320</version>
+    </dependency>
+
   </dependencies>
   <build>
     <plugins>
