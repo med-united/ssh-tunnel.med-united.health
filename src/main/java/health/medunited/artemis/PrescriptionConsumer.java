@@ -52,7 +52,8 @@ public class PrescriptionConsumer implements Runnable {
                     String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
                     prescription = new PrescriptionRequest(practiceManagement, publicKey, message.getBody(String.class));
                     log.info("Content of Bundle: " + prescription.getFhirBundle());
-                    t2MedConnector.createPrescriptionFromBundle(prescription.getFhirBundle());
+                    //TODO: parse Bundle before calling this method
+                    //t2MedConnector.createPrescriptionFromBundle(prescription.getFhirBundle());
                 } else {
                     log.info("Invalid content");
                 }

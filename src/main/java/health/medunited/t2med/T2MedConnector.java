@@ -2,6 +2,7 @@ package health.medunited.t2med;
 
 import health.medunited.client.T2MedClient;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.hl7.fhir.r4.model.Bundle;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -29,7 +30,7 @@ public class T2MedConnector {
     @RestClient
     T2MedClient t2MedClient;
 
-    public void createPrescriptionFromBundle(String prescription) {
+    public void createPrescriptionFromBundle(Bundle prescription) {
 
         Object res = t2MedClient.login();
         //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
