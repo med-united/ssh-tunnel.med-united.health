@@ -1,5 +1,13 @@
 package health.medunited.t2med;
 
+import health.medunited.client.T2MedClient;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.springframework.stereotype.Service;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+
+@ApplicationScoped
 public class T2MedConnector {
     // https://github.com/med-united/care.med-united.health/blob/main/webapp/resources/local/t2med.ps1
     // Server: demo.t2med.com Username: t2user, no password
@@ -18,7 +26,14 @@ public class T2MedConnector {
     // extract attributes from medication
     // create and save prescription
 
-    public T2MedConnector(){
+    @Inject
+    @RestClient
+    T2MedClient t2MedClient;
+
+    public void createPrescriptionFromBundle(String prescription) {
+        System.out.println("---------------------->>>>>>>" + t2MedClient.login().getStatusInfo());
+        //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
+        //TODO: Do other calls to server and pass adequate parameters from the prescription
 
     }
 }

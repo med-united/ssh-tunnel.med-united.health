@@ -1,6 +1,7 @@
 package health.medunited.artemis;
 
 import health.medunited.model.PrescriptionRequest;
+import health.medunited.t2med.T2MedConnector;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
@@ -36,6 +37,9 @@ public class PrescriptionConsumer implements Runnable {
         scheduler.shutdown();
     }
 
+    @Inject
+    T2MedConnector t2MedConnector;
+
     @Override
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
@@ -46,9 +50,9 @@ public class PrescriptionConsumer implements Runnable {
                 if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
                     String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
                     String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
-                    //String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
                     prescription = new PrescriptionRequest(practiceManagement, publicKey, message.getBody(String.class));
                     log.info("Content of Bundle: " + prescription.getFhirBundle());
+                    t2MedConnector.createPrescriptionFromBundle(prescription.getFhirBundle());
                 } else {
                     log.info("Invalid content");
                 }
