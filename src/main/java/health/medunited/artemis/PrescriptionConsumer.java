@@ -39,25 +39,26 @@ public class PrescriptionConsumer implements Runnable {
     @Override
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
-             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"), "receiverPublicKeyFingerprint = 't2med'")) {
+             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"))) {
             while (true) {
                 Message message = consumer.receive();
                 if (message == null) return;
                 if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
                     String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
                     String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
-                    String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
-                    prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
+                    //String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
+                    prescription = new PrescriptionRequest(practiceManagement, publicKey, message.getBody(String.class));
                     log.info("Content of Bundle: " + prescription.getFhirBundle());
                 } else {
                     log.info("Invalid content");
                 }
             }
-        } catch (JMSException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+    //TODO: delete if not needed anymore
     private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {
         byte[] byteData = new byte[(int) message.getBodyLength()];
         message.readBytes(byteData);
