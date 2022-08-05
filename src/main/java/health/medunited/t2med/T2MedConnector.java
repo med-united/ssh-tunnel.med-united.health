@@ -2,7 +2,6 @@ package health.medunited.t2med;
 
 import health.medunited.client.T2MedClient;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
-import org.springframework.stereotype.Service;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -31,7 +30,8 @@ public class T2MedConnector {
     T2MedClient t2MedClient;
 
     public void createPrescriptionFromBundle(String prescription) {
-        System.out.println("---------------------->>>>>>>" + t2MedClient.login().getStatusInfo());
+
+        Object res = t2MedClient.login();
         //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
         //TODO: Do other calls to server and pass adequate parameters from the prescription
 
