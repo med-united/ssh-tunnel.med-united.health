@@ -12,7 +12,7 @@ import javax.inject.Inject;
 
 @QuarkusTest
 @TestProfile(CustomTestProfile.class)
-public class T2MedConnectorTest {
+class T2MedConnectorTest {
 
     @Inject
     T2MedConnector t2MedConnector;

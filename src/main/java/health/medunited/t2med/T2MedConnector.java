@@ -6,6 +6,8 @@ import org.hl7.fhir.r4.model.Bundle;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.ws.rs.core.Response;
+import java.util.LinkedHashMap;
 
 @ApplicationScoped
 public class T2MedConnector {
@@ -32,7 +34,11 @@ public class T2MedConnector {
 
     public void createPrescriptionFromBundle(Bundle prescription) {
 
-        Object res = t2MedClient.login();
+        Response res = t2MedClient.login();
+        LinkedHashMap test = res.readEntity(LinkedHashMap.class);
+        LinkedHashMap first = (LinkedHashMap) test.get("benutzer");
+        LinkedHashMap ref = (LinkedHashMap) first.get("ref");
+        System.out.println("DONE");
         //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
         //TODO: Do other calls to server and pass adequate parameters from the prescription
 
