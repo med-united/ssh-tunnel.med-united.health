@@ -1,6 +1,7 @@
 package health.medunited.artemis;
 
 import health.medunited.model.*;
+import health.medunited.t2med.T2MedConnector;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 import org.json.JSONArray;
@@ -38,10 +39,13 @@ public class PrescriptionConsumer implements Runnable {
         scheduler.shutdown();
     }
 
+    @Inject
+    T2MedConnector t2MedConnector;
+
     @Override
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE);
-             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"), "receiverPublicKeyFingerprint = 't2med'")) {
+             JMSConsumer consumer = context.createConsumer(context.createQueue("Prescriptions"))) {
             while (true) {
                 Message message = consumer.receive();
                 if (message == null) return;
@@ -71,11 +75,14 @@ public class PrescriptionConsumer implements Runnable {
 
                     Bundle bundle = new Bundle(practitioner, patient, medicationStatement, pharmacy);
 
+                    //TODO: parse Bundle before calling this method
+                    //t2MedConnector.createPrescriptionFromBundle(prescription.getFhirBundle());
+
                 } else {
                     log.info("Invalid content");
                 }
             }
-        } catch (JMSException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -218,4 +225,13 @@ public class PrescriptionConsumer implements Runnable {
         }
         return new Pharmacy(name, street.toString().trim(), houseNumber, city, postalCode, phone, email);
     }
+
+    //TODO: delete if not needed anymore
+    private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {
+        byte[] byteData = new byte[(int) message.getBodyLength()];
+        message.readBytes(byteData);
+        message.reset();
+        return new String(byteData);
+    }
+
 }
