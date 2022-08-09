@@ -34,9 +34,10 @@ public interface T2MedClient {
     JsonObject getCase(JsonObject caseSearch);
 
     //TODO: finish the configuration of the request (pass correct body/params)
-    @POST
+    @GET   
+    @Consumes("application/json")
     @Path("/aps/rest/praxis/praxisstruktur/kontextauswaehlen/arztrollenbehandlungorte")
-    JsonObject getPlace();
+    JsonObject getCaseLocation();
 
     //TODO: finish the configuration of the request (pass correct body/params)
     @POST

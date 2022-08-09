@@ -90,6 +90,10 @@ public class T2MedConnector {
 
         log.info("Case Reference: "+caseReference);
 
+        JsonObject caseLocationJson = t2MedClient.getCaseLocation();
+        // $caseLocationReference = $response | Select-Object -ExpandProperty "behandlungsorte" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" -First 1 | Select-Object -ExpandProperty "id"
+        String caseLocationReference = ((JsonObject)caseLocationJson.getJsonArray("behandlungsorte").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+        log.info("Case Location Reference: "+caseLocationReference);
 
     }
 
