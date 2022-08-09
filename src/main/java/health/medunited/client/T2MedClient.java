@@ -31,18 +31,17 @@ public interface T2MedClient {
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/praxis/behandlungsfaelle/faellefuerpatientinkrementell")
-    JsonObject getCase(JsonObject caseSearch);
+    JsonObject getCase(JsonObject searchCase);
 
-    //TODO: finish the configuration of the request (pass correct body/params)
     @GET   
     @Consumes("application/json")
     @Path("/aps/rest/praxis/praxisstruktur/kontextauswaehlen/arztrollenbehandlungorte")
     JsonObject getCaseLocation();
 
-    //TODO: finish the configuration of the request (pass correct body/params)
     @POST
+    @Consumes("application/json")
     @Path("/aps/rest/verordnung/rezept/ausstellen/amdb/page")
-    JsonObject searchMedicationByPzn();
+    JsonObject searchMedicationByPzn(JsonObject searchPzn);
 
     //TODO: finish the configuration of the request (pass correct body/params)
     @POST

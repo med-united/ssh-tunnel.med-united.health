@@ -61,6 +61,16 @@ class T2MedConnectorTest {
                 "          \"lastUpdated\": \"2022-07-29T13:59:39.854+01:00\",\n" +
                 "          \"source\": \"#FOadBcXP3WefWviN\"\n" +
                 "        },\n" +
+                "        \"identifier\": [{\n" +
+                "          \"type\": {\n" +
+                "            \"coding\": [{\n" +
+                "              \"system\": \"http://terminology.hl7.org/CodeSystem/v2-0203\",\n" +
+                "              \"code\": \"LANR\"\n" +
+                "            }]\n" +
+                "          },\n" +
+                "          \"system\": \"https://fhir.kbv.de/NamingSystem/KBV_NS_Base_ANR\",\n" +
+                "          \"value\": \"123456601\"\n" +
+                "        }],\n" +
                 "        \"extension\": [\n" +
                 "          {\n" +
                 "            \"url\": null,\n" +
