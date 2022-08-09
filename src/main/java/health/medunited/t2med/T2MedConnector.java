@@ -63,8 +63,8 @@ public class T2MedConnector {
         
         JsonObject doctorReferenceJson = t2MedClient.getDoctorRole(findVerwalt);
 
-        // TODO: read it from the prescription bundle
-        String lanr = "123456601";
+        // TODO: read it from the prescription bundle "123456601"
+        String lanr = prescription.getEntry().get(0).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
         String doctorReference = ((JsonObject)doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get()).getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
 
@@ -81,12 +81,12 @@ public class T2MedConnector {
 
         log.info("Patient reference: "+patientReference);
 
-        JsonObject caseSearch = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
+        JsonObject searchCase = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
 
-        JsonObject caseSearchJson = t2MedClient.getCase(caseSearch);
+        JsonObject searchCaseJson = t2MedClient.getCase(searchCase);
 
         // $caseReference = $response | Select-Object -ExpandProperty "zeilenMaps" | Select-Object -ExpandProperty "AKTUELL" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String caseReference = ((JsonObject)caseSearchJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String caseReference = ((JsonObject)searchCaseJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Case Reference: "+caseReference);
 
@@ -94,6 +94,11 @@ public class T2MedConnector {
         // $caseLocationReference = $response | Select-Object -ExpandProperty "behandlungsorte" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" -First 1 | Select-Object -ExpandProperty "id"
         String caseLocationReference = ((JsonObject)caseLocationJson.getJsonArray("behandlungsorte").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
         log.info("Case Location Reference: "+caseLocationReference);
+
+        // Search medication by PZN
+        JsonObject searchPzn = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
+
+        JsonObject searchPznJson = t2MedClient.searchMedicationByPzn(searchPzn);
 
     }
 

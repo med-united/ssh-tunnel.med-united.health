@@ -32,7 +32,7 @@ class T2MedConnectorTest {
         Bundle parsed = parser.parseResource(Bundle.class, input);
 
         t2MedConnector.createPrescriptionFromBundle(parsed);
-    }
+    } 
 
     private String prepareInputBundle() {
         return "{\n" +
