@@ -1,12 +1,13 @@
 package health.medunited.client;
 
-import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
-import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
-
+import javax.json.JsonObject;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.core.Response;
+
+import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @Path("/")
 @RegisterRestClient
@@ -15,36 +16,36 @@ public interface T2MedClient {
 
     @GET
     @Path("/aps/rest/benutzer/login/authenticate")
-    Response login();
+    JsonObject login();
 
-    //TODO: finish the configuration of the request (pass correct body/params)
     @POST
+    @Consumes("application/json")
     @Path("/aps/rest/benutzer/verwalten/find")
-    Response getDoctorRole();
+    JsonObject getDoctorRole(JsonObject findVerwalt);
 
-    //TODO: finish the configuration of the request (pass correct body/params)
     @POST
+    @Consumes("application/json")
     @Path("/aps/rest/praxis/patient/liste/pagefilter")
-    Response filterPatients();
+    JsonObject filterPatients(JsonObject searchPatient);
 
-    //TODO: finish the configuration of the request (pass correct body/params)
     @POST
+    @Consumes("application/json")
     @Path("/aps/rest/praxis/behandlungsfaelle/faellefuerpatientinkrementell")
-    Response getCase();
+    JsonObject getCase(JsonObject caseSearch);
 
     //TODO: finish the configuration of the request (pass correct body/params)
     @POST
     @Path("/aps/rest/praxis/praxisstruktur/kontextauswaehlen/arztrollenbehandlungorte")
-    Response getPlace();
+    JsonObject getPlace();
 
     //TODO: finish the configuration of the request (pass correct body/params)
     @POST
     @Path("/aps/rest/verordnung/rezept/ausstellen/amdb/page")
-    Response searchMedicationByPzn();
+    JsonObject searchMedicationByPzn();
 
     //TODO: finish the configuration of the request (pass correct body/params)
     @POST
     @Path("/aps/rest/verordnung/rezept/ausstellen/saveerezepte")
-    Response createAndSavePrescription();
+    JsonObject createAndSavePrescription();
 
 }

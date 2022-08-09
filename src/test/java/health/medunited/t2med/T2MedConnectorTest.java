@@ -1,14 +1,15 @@
 package health.medunited.t2med;
 
+import javax.inject.Inject;
+
+import org.hl7.fhir.r4.model.Bundle;
+import org.junit.jupiter.api.Test;
+
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import health.medunited.profile.CustomTestProfile;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.hl7.fhir.r4.model.Bundle;
-import org.junit.jupiter.api.Test;
-
-import javax.inject.Inject;
 
 @QuarkusTest
 @TestProfile(CustomTestProfile.class)
@@ -16,6 +17,8 @@ class T2MedConnectorTest {
 
     @Inject
     T2MedConnector t2MedConnector;
+
+
 
     @Test
     void testLogin() {

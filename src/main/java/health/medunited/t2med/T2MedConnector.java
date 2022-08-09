@@ -1,20 +1,23 @@
 package health.medunited.t2med;
 
-import health.medunited.client.T2MedClient;
-import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
-import org.hl7.fhir.r4.model.Bundle;
+import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.ws.rs.core.Response;
-import java.io.StringReader;
+
+import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.ResourceType;
+
+import health.medunited.client.T2MedClient;
 
 @ApplicationScoped
 public class T2MedConnector {
+
+    private static Logger log = Logger.getLogger(T2MedConnector.class.getName());
     // https://github.com/med-united/care.med-united.health/blob/main/webapp/resources/local/t2med.ps1
     // Server: demo.t2med.com Username: t2user, no password
     // curl --user t2user: -k https://demo.t2med.com:16567/aps/rest/benutzer/login/authenticate -v
@@ -38,24 +41,56 @@ public class T2MedConnector {
 
     public void createPrescriptionFromBundle(Bundle prescription) {
 
-        Response res = t2MedClient.login();
-        JsonObject test = getJsonObject(res);
-        System.out.println("DONE");
+        JsonObject login = t2MedClient.login();
+        
+        log.info("Login successfully? "+login.getBoolean("successful"));
         //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
         //TODO: Do other calls to server and pass adequate parameters from the prescription
 
+        // $userReference = $response | Select-Object -ExpandProperty "benutzer" | Select-Object -ExpandProperty "benutzer" | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
+        // Write-Host "User reference: " $userReference
+
+        String userReference = login.getJsonObject("benutzer").getJsonObject("benutzer").getJsonObject("ref").getJsonObject("objectId").getJsonString("id").getString();
+
+        log.info("User reference: "+userReference);
+
+        JsonObject findVerwalt = Json.createObjectBuilder()
+            .add("benutzerRef", 
+                Json.createObjectBuilder().add("objectId",
+                    Json.createObjectBuilder().add("id", userReference)
+                )
+            ).add("findOnlyAssigned", true).build();
+        
+        JsonObject doctorReferenceJson = t2MedClient.getDoctorRole(findVerwalt);
+
+        // TODO: read it from the prescription bundle
+        String lanr = "123456601";
+        // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
+        String doctorReference = ((JsonObject)doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get()).getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
+
+        log.info("Doctor reference: "+doctorReference);
+
+        Patient patient = (Patient) prescription.getEntry().stream().filter(p -> p.getResource().getResourceType() == ResourceType.Patient).findFirst().get().getResource();
+
+        JsonObject searchPatient = Json.createObjectBuilder().add("searchString", patient.getName().get(0).getFamily()+", "+patient.getName().get(0).getGivenAsSingleString()).build();
+        
+        JsonObject searchPatientJsonResponse = t2MedClient.filterPatients(searchPatient);
+
+        // $patientReference = $response | Select-Object -ExpandProperty "patientSearchResultDTOS" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
+        String patientReference = ((JsonObject)searchPatientJsonResponse.getJsonArray("patientSearchResultDTOS").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+
+        log.info("Patient reference: "+patientReference);
+
+        JsonObject caseSearch = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
+
+        JsonObject caseSearchJson = t2MedClient.getCase(caseSearch);
+
+        // $caseReference = $response | Select-Object -ExpandProperty "zeilenMaps" | Select-Object -ExpandProperty "AKTUELL" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
+        String caseReference = ((JsonObject)caseSearchJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+
+        log.info("Case Reference: "+caseReference);
+
+
     }
 
-    private JsonObject getJsonObject(Response response) {
-        String jsonString = response.readEntity(String.class);
-        JsonObject jsonObject = JsonObject.EMPTY_JSON_OBJECT;
-
-        if (StringUtils.isNotBlank(jsonString)) {
-            try (JsonReader jsonReader = Json.createReader(new StringReader(jsonString))) {
-                jsonObject = jsonReader.readObject();
-            }
-        }
-
-        return jsonObject;
-    }
 }
