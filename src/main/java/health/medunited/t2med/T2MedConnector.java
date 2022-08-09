@@ -1,13 +1,17 @@
 package health.medunited.t2med;
 
 import health.medunited.client.T2MedClient;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.hl7.fhir.r4.model.Bundle;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 import javax.ws.rs.core.Response;
-import java.util.LinkedHashMap;
+import java.io.StringReader;
 
 @ApplicationScoped
 public class T2MedConnector {
@@ -35,12 +39,23 @@ public class T2MedConnector {
     public void createPrescriptionFromBundle(Bundle prescription) {
 
         Response res = t2MedClient.login();
-        LinkedHashMap test = res.readEntity(LinkedHashMap.class);
-        LinkedHashMap first = (LinkedHashMap) test.get("benutzer");
-        LinkedHashMap ref = (LinkedHashMap) first.get("ref");
+        JsonObject test = getJsonObject(res);
         System.out.println("DONE");
         //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
         //TODO: Do other calls to server and pass adequate parameters from the prescription
 
+    }
+
+    private JsonObject getJsonObject(Response response) {
+        String jsonString = response.readEntity(String.class);
+        JsonObject jsonObject = JsonObject.EMPTY_JSON_OBJECT;
+
+        if (StringUtils.isNotBlank(jsonString)) {
+            try (JsonReader jsonReader = Json.createReader(new StringReader(jsonString))) {
+                jsonObject = jsonReader.readObject();
+            }
+        }
+
+        return jsonObject;
     }
 }
