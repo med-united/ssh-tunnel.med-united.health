@@ -41,7 +41,7 @@ public interface T2MedClient {
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/verordnung/rezept/ausstellen/amdb/page")
-    JsonObject searchMedicationByPzn(JsonObject searchPzn);
+    JsonObject searchMedication(JsonObject amdbSearchQuery);
 
     //TODO: finish the configuration of the request (pass correct body/params)
     @POST

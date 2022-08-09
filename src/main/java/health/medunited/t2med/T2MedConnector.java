@@ -63,7 +63,6 @@ public class T2MedConnector {
         
         JsonObject doctorReferenceJson = t2MedClient.getDoctorRole(findVerwalt);
 
-        // TODO: read it from the prescription bundle "123456601"
         String lanr = prescription.getEntry().get(0).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
         String doctorReference = ((JsonObject)doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get()).getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
@@ -95,10 +94,11 @@ public class T2MedConnector {
         String caseLocationReference = ((JsonObject)caseLocationJson.getJsonArray("behandlungsorte").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
         log.info("Case Location Reference: "+caseLocationReference);
 
-        // Search medication by PZN
-        JsonObject searchPzn = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
+        String pzn = prescription.getEntry().get(2).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
 
-        JsonObject searchPznJson = t2MedClient.searchMedicationByPzn(searchPzn);
+        JsonObject amdbSearch = Json.createObjectBuilder().add("amdbSearchQueries", Json.createArrayBuilder().add(Json.createObjectBuilder().add("searchtext",pzn))).build();
+
+        JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearch);
 
     }
 
