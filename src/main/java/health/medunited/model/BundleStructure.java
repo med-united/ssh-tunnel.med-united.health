@@ -1,12 +1,12 @@
 package health.medunited.model;
 
-public class Bundle {
+public class BundleStructure {
     private final Practitioner practitioner;
     private final Patient patient;
     private final MedicationStatement medicationStatement;
     private final Pharmacy pharmacy;
 
-    public Bundle(Practitioner practitioner, Patient patient, MedicationStatement medicationStatement, Pharmacy pharmacy) {
+    public BundleStructure(Practitioner practitioner, Patient patient, MedicationStatement medicationStatement, Pharmacy pharmacy) {
         this.practitioner = practitioner;
         this.patient = patient;
         this.medicationStatement = medicationStatement;
