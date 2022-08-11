@@ -98,7 +98,7 @@ public class T2MedConnector {
 
         JsonObject amdbSearch = Json.createObjectBuilder().add("amdbSearchQueries", Json.createArrayBuilder().add(Json.createObjectBuilder().add("searchtext",pzn))).build();
 
-        JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearch);
+        //JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearch);
 
     }
 
