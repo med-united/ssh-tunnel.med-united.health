@@ -33,7 +33,7 @@ public class IsynetMSQLConnector {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-        String connectionUrl = "jdbc:sqlserver://192.168.178.50:1433;databaseName=WINACS;user=AP31;password=722033800; trustServerCertificate=true";
+        String connectionUrl = "jdbc:sqlserver://lhtufukeqw3tayq1.myfritz.net:1433;databaseName=WINACS;user=AP31;password=722033800;trustServerCertificate=true";
         try (Connection con = DriverManager.getConnection(connectionUrl); Statement stmt = con.createStatement()) {
 
             String SQL_get_patient_nummer = "" +
