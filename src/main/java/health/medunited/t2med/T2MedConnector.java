@@ -6,6 +6,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonValue;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.hl7.fhir.r4.model.Bundle;
@@ -65,9 +66,9 @@ public class T2MedConnector {
 
         String lanr = prescription.getEntry().get(0).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String doctorReference = ((JsonObject)doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get()).getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String doctorRoleReference = ((JsonObject)doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get()).getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
 
-        log.info("Doctor reference: "+doctorReference);
+        log.info("Doctor Role reference: "+doctorRoleReference);
 
         Patient patient = (Patient) prescription.getEntry().stream().filter(p -> p.getResource().getResourceType() == ResourceType.Patient).findFirst().get().getResource();
 
@@ -96,10 +97,113 @@ public class T2MedConnector {
 
         String pzn = prescription.getEntry().get(2).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
 
-        JsonObject amdbSearch = Json.createObjectBuilder().add("amdbSearchQueries", Json.createArrayBuilder().add(Json.createObjectBuilder().add("searchtext",pzn))).build();
+        JsonObject amdbSearchQueryJson = buildAmdbSearchQueryJson(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
+        JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearchQueryJson);
 
-        //JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearch);
+    }
 
+    private JsonObject buildAmdbSearchQueryJson(String patientReference, String doctorRoleReference, String caseReference, String caseLocationReference, String userReference, String pzn){
+        //{
+        //  "amdbSearchQueries": [
+        //      {
+        //          "searchtext": "$PZN"
+        //      }
+        //  ],
+        //  "arzneimittelverordnungenAnzeigen": true,
+        //  "ausserVetriebeAusblenden": false,
+        //  "deaktivierteVerordnungenAnzeigen": false,
+        //  "freitextverordnungenAnzeigen": true,
+        //  "kontext": {
+        //      "arztrolleRef": {
+        //          "objectId": {
+        //              "id": "$doctorReference"
+        //          }
+        //      },
+        //      "behandlungsfallRef": {
+        //          "objectId": {
+        //              "id": "$caseReference"
+        //          }
+        //      },
+        //      "behandlungsortRef": {
+        //          "objectId": {
+        //              "id": "$caseLocationReference"
+        //          }
+        //      },
+        //      "benutzerRef": {
+        //          "objectId": {
+        //              "id": "$userReference"
+        //          }
+        //      },
+        //      "patientRef": {
+        //          "objectId": {
+        //              "id": "$patientReference"
+        //          }
+        //      }
+        //  },
+        //  "reimportArzneimittelAusblenden": false,
+        //  "searchTerm": "$PZN",
+        //  "selectedFilters": [],
+        //  "start": 0,
+        //  "vorgangstyp": null,
+        //  "wirkstoffverordnungenAnzeigen": true
+        //}
+        JsonObject query = Json.createObjectBuilder()
+        .add("amdbSearchQueries", 
+                Json.createArrayBuilder()
+                .add(Json.createObjectBuilder()
+                        .add("searchtext",pzn)
+                )
+        ).add("arzneimittelverordnungenAnzeigen", JsonValue.TRUE)
+        .add("ausserVetriebeAusblenden", JsonValue.FALSE)
+        .add("deaktivierteVerordnungenAnzeigen", JsonValue.FALSE)
+        .add("freitextverordnungenAnzeigen", JsonValue.TRUE)
+        .add("kontext",
+                Json.createObjectBuilder()
+                .add("arztrolleRef",
+                    Json.createObjectBuilder()
+                    .add("objectId",
+                            Json.createObjectBuilder()
+                            .add("id",doctorRoleReference)
+                    )
+                )
+                .add("behandlungsfallRef",
+                    Json.createObjectBuilder()
+                    .add("objectId",
+                            Json.createObjectBuilder()
+                            .add("id",caseReference)
+                    )
+                )
+                .add("behandlungsortRef",
+                    Json.createObjectBuilder()
+                    .add("objectId",
+                            Json.createObjectBuilder()
+                            .add("id",caseLocationReference)
+                    )
+                )
+                .add("benutzerRef",
+                    Json.createObjectBuilder()
+                    .add("objectId",
+                            Json.createObjectBuilder()
+                            .add("id",userReference)
+                    )
+                )
+                .add("patientRef",
+                    Json.createObjectBuilder()
+                    .add("objectId",
+                            Json.createObjectBuilder()
+                            .add("id",patientReference)
+                    )
+                )
+        )
+        .add("reimportArzneimittelAusblenden", JsonValue.FALSE)
+        .add("searchTerm", pzn)
+        .add("selectedFilters", JsonValue.EMPTY_JSON_ARRAY)
+        .add("start", 0)
+        .add("vorgangstyp", JsonValue.NULL)
+        .add("wirkstoffverordnungenAnzeigen", JsonValue.TRUE)
+        .build();
+
+        return query;
     }
 
 }
