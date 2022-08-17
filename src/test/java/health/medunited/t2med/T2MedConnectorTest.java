@@ -19,9 +19,8 @@ class T2MedConnectorTest {
     T2MedConnector t2MedConnector;
 
 
-
     @Test
-    void testLogin() {
+    void testCreatePrescriptionFromBundle() {
 
         FhirContext ctx = FhirContext.forR4();
 
@@ -32,7 +31,7 @@ class T2MedConnectorTest {
         Bundle parsed = parser.parseResource(Bundle.class, input);
 
         t2MedConnector.createPrescriptionFromBundle(parsed);
-    } 
+    }
 
     private String prepareInputBundle() {
         return "{\n" +
