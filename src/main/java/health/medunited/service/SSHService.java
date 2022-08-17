@@ -54,9 +54,11 @@ public class SSHService {
             }
         });
         sshServer.setSessionHeartbeat(HeartbeatType.IGNORE, Duration.ofSeconds(5));
-        sshServer.setShellFactory(new ProcessShellFactory("/bin/sh", "/bin/sh", "-i", "-l"));
-        //For Windows prompt
-        //sshServer.setShellFactory(new ProcessShellFactory("cmd", "cmd"));
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            sshServer.setShellFactory(new ProcessShellFactory("cmd", "cmd"));
+        } else {
+            sshServer.setShellFactory(new ProcessShellFactory("/bin/sh", "/bin/sh", "-i", "-l"));
+        }
         sshServer.setForwarderFactory(DefaultForwarderFactory.INSTANCE);
         try {
             log.info("Starting SSH server on port: " + PORT);
