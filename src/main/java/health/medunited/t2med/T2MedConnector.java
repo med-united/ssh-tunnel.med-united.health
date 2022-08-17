@@ -45,12 +45,8 @@ public class T2MedConnector {
         JsonObject login = t2MedClient.login();
         
         log.info("Login successfully? "+login.getBoolean("successful"));
-        //TODO: encapsulate prescription in a Bundle with a FHIR resource parser
-        //TODO: Do other calls to server and pass adequate parameters from the prescription
 
         // $userReference = $response | Select-Object -ExpandProperty "benutzer" | Select-Object -ExpandProperty "benutzer" | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        // Write-Host "User reference: " $userReference
-
         String userReference = login.getJsonObject("benutzer").getJsonObject("benutzer").getJsonObject("ref").getJsonObject("objectId").getJsonString("id").getString();
 
         log.info("User reference: "+userReference);
@@ -66,7 +62,7 @@ public class T2MedConnector {
 
         String lanr = prescription.getEntry().get(0).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String doctorRoleReference = ((JsonObject)doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get()).getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String doctorRoleReference = doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get().asJsonObject().getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Doctor Role reference: "+doctorRoleReference);
 
@@ -77,7 +73,7 @@ public class T2MedConnector {
         JsonObject searchPatientJsonResponse = t2MedClient.filterPatients(searchPatient);
 
         // $patientReference = $response | Select-Object -ExpandProperty "patientSearchResultDTOS" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String patientReference = ((JsonObject)searchPatientJsonResponse.getJsonArray("patientSearchResultDTOS").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String patientReference = searchPatientJsonResponse.getJsonArray("patientSearchResultDTOS").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Patient reference: "+patientReference);
 
@@ -86,20 +82,47 @@ public class T2MedConnector {
         JsonObject searchCaseJson = t2MedClient.getCase(searchCase);
 
         // $caseReference = $response | Select-Object -ExpandProperty "zeilenMaps" | Select-Object -ExpandProperty "AKTUELL" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String caseReference = ((JsonObject)searchCaseJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String caseReference = searchCaseJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Case Reference: "+caseReference);
 
         JsonObject caseLocationJson = t2MedClient.getCaseLocation();
         // $caseLocationReference = $response | Select-Object -ExpandProperty "behandlungsorte" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" -First 1 | Select-Object -ExpandProperty "id"
-        String caseLocationReference = ((JsonObject)caseLocationJson.getJsonArray("behandlungsorte").get(0)).getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String caseLocationReference = caseLocationJson.getJsonArray("behandlungsorte").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
         log.info("Case Location Reference: "+caseLocationReference);
 
-        String pzn = prescription.getEntry().get(2).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
+        String pzn = prescription.getEntry().get(2).getResource().getChildByName("identifier").getValues().get(0).getNamedProperty("value").getValues().get(0).primitiveValue();
 
         JsonObject amdbSearchQueryJson = buildAmdbSearchQueryJson(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
         JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearchQueryJson);
 
+        // $medicationName = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "name"
+        JsonObject medicationPacking = amdbResponseJson.getJsonArray("entries").get(0).asJsonObject().getJsonObject("packung");
+        String medicationName = medicationPacking.getString("name");
+        // $handelsname = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "handelsname"
+        String handelsname = medicationPacking.getString("handelsname");
+        // $erezeptName = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "erezeptName"
+        String erezeptName = medicationPacking.getString("erezeptName");
+        // $herstellername = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "herstellername"
+        String herstellername = medicationPacking.getString("herstellername");
+        // $preis = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "preis"
+        String preis = medicationPacking.getString("preis");
+        // $preisReimportTeratogenFiktivZugelassen = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "preisReimportTeratogenFiktivZugelassen"
+        String preisReimportTeratogenFiktivZugelassen = medicationPacking.getString("preisReimportTeratogenFiktivZugelassen");
+        // $atcCodes = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "atcCodes"
+        String atcCode0 = medicationPacking.getJsonArray("atcCodes").getString(0);
+        // $einheitenname = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "einheitenname"
+        String einheitenname = medicationPacking.getString("einheitenname");
+        // $einheitennameFuerReichweitenberechnung = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "einheitennameFuerReichweitenberechnung"
+        String einheitennameFuerReichweitenberechnung = medicationPacking.getString("einheitennameFuerReichweitenberechnung");
+        // $wirkstoff = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstoff" -First 1
+        JsonObject wirkstoffWirkstaerken0 = medicationPacking.getJsonArray("wirkstoffWirkstaerken").get(0).asJsonObject();
+        String wirkstoff = wirkstoffWirkstaerken0.getString("wirkstoff");
+        // $wirkstaerkeWert = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "wert"
+        JsonObject wirkstaerke = wirkstoffWirkstaerken0.getJsonObject("wirkstaerke");
+        int wirkstaerkeWert = wirkstaerke.getInt("wert");
+        // $wirkstaerkeEinheit = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "einheit"
+        String wirkstaerkeEinheit = wirkstaerke.getString("einheit");
     }
 
     private JsonObject buildAmdbSearchQueryJson(String patientReference, String doctorRoleReference, String caseReference, String caseLocationReference, String userReference, String pzn){
