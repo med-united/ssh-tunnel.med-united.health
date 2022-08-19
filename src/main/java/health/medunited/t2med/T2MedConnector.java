@@ -19,22 +19,6 @@ import health.medunited.client.T2MedClient;
 public class T2MedConnector {
 
     private static Logger log = Logger.getLogger(T2MedConnector.class.getName());
-    // https://github.com/med-united/care.med-united.health/blob/main/webapp/resources/local/t2med.ps1
-    // Server: demo.t2med.com Username: t2user, no password
-    // curl --user t2user: -k https://demo.t2med.com:16567/aps/rest/benutzer/login/authenticate -v
-    // install T2Med client: https://download.t2med.de/
-    // create 2.0 client
-    // set authentication base
-    // authenticate against T2-Med system
-    // extract user reference from the JSON object
-    // get doctor's role
-    // extract doctor's role reference from JSON
-    // find patient by last name first name
-    // get most recent case - handlungsfile
-    // get location for treatment
-    // find medication
-    // extract attributes from medication
-    // create and save prescription
 
     @Inject
     @RestClient
@@ -42,27 +26,27 @@ public class T2MedConnector {
 
     public void createPrescriptionFromBundle(Bundle prescription) {
 
-        JsonObject login = t2MedClient.login();
+        JsonObject loginResponseJson = t2MedClient.login();
         
-        log.info("Login successfully? "+login.getBoolean("successful"));
+        log.info("Login successfully? "+loginResponseJson.getBoolean("successful"));
 
         // $userReference = $response | Select-Object -ExpandProperty "benutzer" | Select-Object -ExpandProperty "benutzer" | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String userReference = login.getJsonObject("benutzer").getJsonObject("benutzer").getJsonObject("ref").getJsonObject("objectId").getJsonString("id").getString();
+        String userReference = loginResponseJson.getJsonObject("benutzer").getJsonObject("benutzer").getJsonObject("ref").getJsonObject("objectId").getJsonString("id").getString();
 
         log.info("User reference: "+userReference);
 
-        JsonObject findVerwalt = Json.createObjectBuilder()
+        JsonObject findVerwaltJson = Json.createObjectBuilder()
             .add("benutzerRef", 
                 Json.createObjectBuilder().add("objectId",
                     Json.createObjectBuilder().add("id", userReference)
                 )
             ).add("findOnlyAssigned", true).build();
         
-        JsonObject doctorReferenceJson = t2MedClient.getDoctorRole(findVerwalt);
+        JsonObject doctorReferenceResponseJson = t2MedClient.getDoctorRole(findVerwaltJson);
 
         String lanr = prescription.getEntry().get(0).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String doctorRoleReference = doctorReferenceJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get().asJsonObject().getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String doctorRoleReference = doctorReferenceResponseJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject)jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get().asJsonObject().getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Doctor Role reference: "+doctorRoleReference);
 
@@ -70,25 +54,25 @@ public class T2MedConnector {
 
         JsonObject searchPatient = Json.createObjectBuilder().add("searchString", patient.getName().get(0).getFamily()+", "+patient.getName().get(0).getGivenAsSingleString()).build();
         
-        JsonObject searchPatientJsonResponse = t2MedClient.filterPatients(searchPatient);
+        JsonObject searchPatientResponseJson = t2MedClient.filterPatients(searchPatient);
 
         // $patientReference = $response | Select-Object -ExpandProperty "patientSearchResultDTOS" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String patientReference = searchPatientJsonResponse.getJsonArray("patientSearchResultDTOS").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String patientReference = searchPatientResponseJson.getJsonArray("patientSearchResultDTOS").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Patient reference: "+patientReference);
 
         JsonObject searchCase = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
 
-        JsonObject searchCaseJson = t2MedClient.getCase(searchCase);
+        JsonObject searchCaseResponseJson = t2MedClient.getCase(searchCase);
 
         // $caseReference = $response | Select-Object -ExpandProperty "zeilenMaps" | Select-Object -ExpandProperty "AKTUELL" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
-        String caseReference = searchCaseJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String caseReference = searchCaseResponseJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Case Reference: "+caseReference);
 
-        JsonObject caseLocationJson = t2MedClient.getCaseLocation();
+        JsonObject caseLocationResponseJson = t2MedClient.getCaseLocation();
         // $caseLocationReference = $response | Select-Object -ExpandProperty "behandlungsorte" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" -First 1 | Select-Object -ExpandProperty "id"
-        String caseLocationReference = caseLocationJson.getJsonArray("behandlungsorte").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
+        String caseLocationReference = caseLocationResponseJson.getJsonArray("behandlungsorte").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
         log.info("Case Location Reference: "+caseLocationReference);
 
         String pzn = prescription.getEntry().get(2).getResource().getChildByName("identifier").getValues().get(0).getNamedProperty("value").getValues().get(0).primitiveValue();
@@ -123,6 +107,9 @@ public class T2MedConnector {
         int wirkstaerkeWert = wirkstaerke.getInt("wert");
         // $wirkstaerkeEinheit = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "einheit"
         String wirkstaerkeEinheit = wirkstaerke.getString("einheit");
+
+        JsonObject eRezept = buildErezept(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
+        // JsonObject eRezeptResponseJson = t2MedClient.createAndSavePrescription(eRezept);
     }
 
     private JsonObject buildAmdbSearchQueryJson(String patientReference, String doctorRoleReference, String caseReference, String caseLocationReference, String userReference, String pzn){
@@ -229,4 +216,214 @@ public class T2MedConnector {
         return query;
     }
 
+    private JsonObject buildErezept(String patientReference, 
+                                    String doctorRoleReference, 
+                                    String caseReference, 
+                                    String caseLocationReference, 
+                                    String userReference, 
+                                    String pzn) {
+        JsonObject erezept = Json.createObjectBuilder()
+        .add("kontext",
+            Json.createObjectBuilder()
+            .add("arztrolleRef",
+                Json.createObjectBuilder()
+                .add("objectId",
+                        Json.createObjectBuilder()
+                        .add("id",doctorRoleReference)
+                )
+            )
+            .add("aufrufenderVorgang", 4)
+            .add("behandlungsfallRef",
+                Json.createObjectBuilder()
+                .add("objectId",
+                        Json.createObjectBuilder()
+                        .add("id",caseReference)
+                )
+            )
+            .add("behandlungsortRef",
+                Json.createObjectBuilder()
+                .add("objectId",
+                        Json.createObjectBuilder()
+                        .add("id",caseLocationReference)
+                )
+            )
+            .add("benutzerRef",
+                Json.createObjectBuilder()
+                .add("objectId",
+                        Json.createObjectBuilder()
+                        .add("id",userReference)
+                )
+            )
+            .add("patientRef",
+                Json.createObjectBuilder()
+                .add("objectId",
+                        Json.createObjectBuilder()
+                        .add("id",patientReference)
+                )
+            )
+            .add("stationRef", JsonValue.NULL)
+        )
+        .build();
+
+        return erezept;
+        // {
+        //     "kontext": {
+        //         "arztrolleRef": {
+        //             "objectId": {
+        //                 "id": "$doctorRoleReference"
+        //             }
+        //         },
+        //         "aufrufenderVorgang": 4,
+        //         "behandlungsfallRef": {
+        //             "objectId": {
+        //                 "id": "$caseReference"
+        //             }
+        //         },
+        //         "behandlungsortRef": {
+        //             "objectId": {
+        //                 "id": "$caseLocationReference"
+        //             }
+        //         },
+        //         "benutzerRef": {
+        //             "objectId": {
+        //                 "id": "$userReference"
+        //             }
+        //         },
+        //         "patientRef": {
+        //             "objectId": {
+        //                 "id": "$patientReference"
+        //             }
+        //         },
+        //         "stationRef": null
+        //     },
+        //     "rezepteUndVerordnungen": [
+        //         {
+        //             "first": {
+        //                 "ausstellungszeitpunkt": null,
+        //                 "begruendungspflicht": false,
+        //                 "bvg": false,
+        //                 "erezeptInfo": {
+        //                     "absenderId": null,
+        //                     "accessCode": null,
+        //                     "erezeptId": null,
+        //                     "ref": {
+        //                         "objectId": null,
+        //                         "revision": 0
+        //                     },
+        //                     "signaturHbaIccsn": null,
+        //                     "signaturzeitpunkt": null,
+        //                     "signiertesRezeptVerweis": null,
+        //                     "taskId": null,
+        //                     "versandzeitpunkt": null
+        //                 },
+        //                 "ersatzverordnung": false,
+        //                 "hilfsmittel": false,
+        //                 "impfstoff": false,
+        //                 "informationszeitpunkt": null,
+        //                 "notdienstgebuehrenfrei": false,
+        //                 "ref": {
+        //                     "objectId": null,
+        //                     "revision": 0
+        //                 },
+        //                 "rezeptgebuehrenfrei": false,
+        //                 "sonstigerKostentraeger": false,
+        //                 "sprechstundenbedarf": false,
+        //                 "uebertragungsweg": 2,
+        //                 "unfallbetrieb": null,
+        //                 "unfallstatus": 0,
+        //                 "unfalltag": null
+        //             },
+        //             "second": {
+        //                 "alsERezeptVerordnet": false,
+        //                 "alternativeDosierangabe": "Dj",
+        //                 "anzahlEinheiten": null,
+        //                 "anzahlPackungen": 1,
+        //                 "arzneimittelKategorie": null,
+        //                 "autIdem": false,
+        //                 "benutzeERezept": true,
+        //                 "benutzeRezeptinformationstyp": 34,
+        //                 "benutzeSekundaerenRezeptinformationstyp": false,
+        //                 "btmKennzeichen": null,
+        //                 "dosierschema": {
+        //                     "$abends": 0,
+        //                     "freitext": null,
+        //                     "$mittags": 0,
+        //                     "$morgens": 1,
+        //                     "$nachts": 0
+        //                 },
+        //                 "dosierungAufRezept": true,
+        //                 "erezeptZusatzdaten": {
+        //                     "abgabehinweis": null,
+        //                     "mehrfachverordnungen": []
+        //                 },
+        //                 "erezeptfaehig": true,
+        //                 "ersatzverordnungGemaessParagraph31": false,
+        //                 "farbmarkierung": null,
+        //                 "farbmarkierungZumVerordnungszeitpunkt": null,
+        //                 "freitext": null,
+        //                 "hinweis": null,
+        //                 "layerIndex": 1,
+        //                 "letzterInformationstyp": null,
+        //                 "letzterVerordnungszeitpunkt": null,
+        //                 "medikationsplanBestellposition": null,
+        //                 "mehrfachverordnungId": null,
+        //                 "packung": {
+        //                     "amrlHinweiseVorhanden": true,
+        //                     "anlageIIIAnzeigen": true,
+        //                     "anlageVIITeilB": false,
+        //                     "anstaltspackung": false,
+        //                     "anzahlEinheiten": 20,
+        //                     "anzahlEinheitenFuerReichweitenberechnung": 20,
+        //                     "anzahlTeilbareStuecke": 2,
+        //                     "arzneimittelVertriebsstatus": null,
+        //                     "atcCodes": [
+        //                         "$atcCodes"
+        //                     ],
+        //                     "aufNegativliste": false,
+        //                     "bilanzierteDiaet": false,
+        //                     "darreichungsform": {
+        //                         "freitext": null,
+        //                         "ifaCode": null
+        //                     },
+        //                     "darreichungsformIfaCode": "TAB",
+        //                     "einheitenname": "$einheitenname",
+        //                     "einheitennameFuerReichweitenberechnung": "$einheitennameFuerReichweitenberechnung",
+        //                     "erezeptName": "$erezeptName",
+        //                     "fiktivZugelassenesMedikament": false,
+        //                     "handelsname": "$handelsname",
+        //                     "herstellername": "$herstellername",
+        //                     "name": "$name",
+        //                     "lifeStyleStatus": 0,
+        //                     "lifestyleStatusAnzeigen": true,
+        //                     "medizinprodukt": false,
+        //                     "medizinproduktAnzeigen": false,
+        //                     "negativlisteAnzeigen": true,
+        //                     "otcOtxAnzeigen": true,
+        //                     "otcStatus": false,
+        //                     "otxStatus": false,
+        //                     "packungsgroesse": "N1",
+        //                     "pzn": "$PZN",
+        //                     "reimport": false,
+        //                     "removed": false,
+        //                     "rezeptStatus": 2,
+        //                     "teratogen": false,
+        //                     "verbandmittel": false,
+        //                     "verbandmittelAnzeigen": true,
+        //                     "verordnungsfaehigesMedizinprodukt": false,
+        //                     "vertriebsStatus": null,
+        //                     "vertriebsstatusAnzeigen": true,
+        //                     "wirkstoffWirkstaerken": []
+        //                 },
+        //                 "pimPraeparat": false,
+        //                 "primaererRezeptinformationstyp": 34,
+        //                 "requiresArzneimittelempfehlungenCheck": false,
+        //                 "sekundaererRezeptinformationstyp": 98,
+        //                 "verordnungsausschluss": false,
+        //                 "verordnungseinschraenkung": true,
+        //                 "wirkstoff": null
+        //             }
+        //         }
+        //     ]
+        // }
+    }
 }
