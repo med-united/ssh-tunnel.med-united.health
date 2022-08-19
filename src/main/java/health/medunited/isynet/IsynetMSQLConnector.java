@@ -1,12 +1,14 @@
 package health.medunited.isynet;
 
 import health.medunited.artemis.PrescriptionConsumer;
+import health.medunited.service.MedicationDbLookup;
 import health.medunited.model.*;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -14,7 +16,7 @@ public class IsynetMSQLConnector {
 
     private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
-    public void insertToIsynet(BundleStructure bundleStructure) {
+    public void insertToIsynet(BundleStructure bundleStructure, int IDValue) {
 
         String[] dosage = bundleStructure.getMedicationStatement().getDosage().split("-");
         String morgens = dosage[0];
@@ -27,6 +29,18 @@ public class IsynetMSQLConnector {
         LocalDateTime now = LocalDateTime.now();
         String timestamp1 = dtf1.format(now).replace(" ","T");
         String timestamp2 = dtf2.format(now).replace(" ","T");
+
+        String PZNtoLookup = bundleStructure.getMedicationStatement().getPZN();
+        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(PZNtoLookup);
+        if (tableEntry != null) {
+            String medicationName = MedicationDbLookup.getMedicationName(tableEntry);
+            String quantity = MedicationDbLookup.getQuantity(tableEntry);
+            String norm = MedicationDbLookup.getNorm(tableEntry);
+            String AVP = MedicationDbLookup.getAVP(tableEntry);
+            String ATC = MedicationDbLookup.getATC(tableEntry);
+            String composition = MedicationDbLookup.getComposition(tableEntry);
+            log.info("[ MEDICATION OBTAINED FROM DB ] PZN: " + PZNtoLookup + " // name: " + medicationName + " // quantity: " + quantity + " // norm: " + norm + " // AVP: " + AVP + " // ATC: " + ATC + " // composition: " + composition);
+        }
 
         try {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
@@ -68,17 +82,21 @@ public class IsynetMSQLConnector {
             String SQL_delete_ScheinMedDaten = "DELETE FROM ScheinMedDaten WHERE Nummer > 0";
 
 //            QUERIES EXECUTED: Delete entries in tables
-            stmt.execute(SQL_delete_ScheinMedDaten);
-            stmt.execute(SQL_delete_KrablLinkID);
-            stmt.execute(SQL_delete_KrablLink);
-            stmt.execute(SQL_delete_ScheinMed);
-            stmt.execute(SQL_delete_VerordnungsmodulDosierungDbo);
-            stmt.execute(SQL_delete_VerordnungsmodulMedikationDbo);
-            stmt.execute(SQL_delete_VerordnungsmodulRezeptDbo);
-            stmt.execute(SQL_delete_VerordnungsmodulRezepturWirkstoffDbo);
-            stmt.execute(SQL_delete_VerordnungsmodulMedikamentDbo);
+            if (IDValue == 1) {
+                stmt.execute(SQL_delete_ScheinMedDaten);
+                stmt.execute(SQL_delete_KrablLinkID);
+                stmt.execute(SQL_delete_KrablLink);
+                stmt.execute(SQL_delete_ScheinMed);
+                stmt.execute(SQL_delete_VerordnungsmodulDosierungDbo);
+                stmt.execute(SQL_delete_VerordnungsmodulMedikationDbo);
+                stmt.execute(SQL_delete_VerordnungsmodulRezeptDbo);
+                stmt.execute(SQL_delete_VerordnungsmodulRezepturWirkstoffDbo);
+                stmt.execute(SQL_delete_VerordnungsmodulMedikamentDbo);
+            }
 
-            String IDvalue = "1";
+            String IDvalue = String.valueOf(IDValue);
+            log.info("ID VALUE IS " + IDvalue);
+            assert tableEntry != null;
             String SQL_insert_medication = "" +
 //                    SET XACT_ABORT ON: in case of an error, rollback will be issued automatically
                     "SET XACT_ABORT ON\n" +
@@ -86,17 +104,17 @@ public class IsynetMSQLConnector {
 //                    Insert into VerordnungsmodulMedikamentDbo table (Prescription module medication table)
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] ON\n" +
                     "INSERT [dbo].[VerordnungsmodulMedikamentDbo] ([Id], [Pzn], [HandelsnameOderFreitext], [Hersteller], [AtcCodes], [AtcCodeBedeutungen], [Darreichungsform], [DarreichungsformAsFreitext], [PackungsgroesseText], [PackungsgroesseWert], [PackungsgroesseEinheit], [PackungsgroesseEinheitCode], [Normgroesse], [Preis_IsSet], [Preis_ApothekenVerkaufspreisCent], [Preis_FestbetragCent], [Preis_MehrkostenCent], [Preis_ZuzahlungCent], [Preis_GesamtzuzahlungCent], [Typ], [Farbe], [IsPriscus], [Created], [DatasetCreated], [UserCreated], [LastChanged], [DatasetLastChanged], [UserLastChanged], [IsArchiviert], [Hilfsmittelpositionsnummer])" +
-                    "VALUES (" + IDvalue + ", " + bundleStructure.getMedicationStatement().getPZN() + ", N'Floxal Augentropfen', N'Pharma Gerke Arzneimittelvertriebs GmbH', N'S01AE01', N'Ofloxacin', N'ATR', N'Augentropfen', N'5', N'5', N'Milliliter', N'ml', 1, 1, 1665, NULL, NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
+                    "VALUES (" + IDvalue + ", " + bundleStructure.getMedicationStatement().getPZN() + ", N'" + MedicationDbLookup.getMedicationName(tableEntry) + "', N'', N'" + MedicationDbLookup.getATC(tableEntry) + "', N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'', N'', N'', N'', N'', N'', 1, 1, 1665, NULL, NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] OFF\n" +
 //                    Insert into VerordnungsmodulRezepturWirkstoffDbo table (Prescription module active ingredient table)
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ON\n" +
                     "INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ([Id], [AtcCode], [AtcCodeBedeutung], [Freitext], [WirkstaerkeWert], [WirkstaerkeEinheit], [WirkstaerkeEinheitCode], [ProduktmengeWert], [ProduktmengeEinheit], [ProduktmengeEinheitCode], [MedikamentDbo_Id])" +
-                    "VALUES ("+ IDvalue +", NULL, NULL, N'Ofloxacin', N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'AuTro', N'1', "+ IDvalue +")\n" +
+                    "VALUES ("+ IDvalue +", NULL, NULL, N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'AuTro', N'1', "+ IDvalue +")\n" +
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] OFF\n" +
 //                    Insert into VerordnungsmodulRezeptDbo table (Prescription module recipe table)
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] ON\n" +
                     "INSERT [dbo].[VerordnungsmodulRezeptDbo] ([Id], [RezeptGruppierung], [OnRezeptWeight], [MedikamentId], [PatientId], [Ausstellungsdatum], [Erstellungsdatum], [BehandlerId], [KostentraegerId], [BetriebsstaetteId], [AnzahlWert], [AnzahlEinheit], [AnzahlEinheitCode], [RezeptZusatzinfos_IsSet], [RezeptZusatzinfos_Gebuehrenfrei], [RezeptZusatzinfos_Unfall], [RezeptZusatzinfos_Arbeitsunfall], [RezeptZusatzinfos_Noctu], [RezeptTyp], [KennzeichenStatus], [MPKennzeichen], [AutIdem], [RezeptZeile], [VerordnungsStatus], [BtmSonderkennzeichen], [TRezeptZusatzinfos_IsSet], [TRezeptZusatzinfos_SicherheitsbestimmungenEingehalten], [TRezeptZusatzinfos_InformationfsmaterialAusgegeben], [TRezeptZusatzinfos_InOffLabel], [HilfsmittelRezeptZusatzinfos_IsSet], [HilfsmittelRezeptZusatzinfos_ProduktnummerPrintType], [HilfsmittelRezeptZusatzinfos_DiagnoseText], [HilfsmittelRezeptZusatzinfos_Zeitraum], [AdditionalText], [Annotation], [ReasonForTreatment], [HasToApplyAdditionalTextToRezept], [HasToApplyAnnotationTextToRezept], [IsHilfsmittelRezept], [IsImpfstoffRezept], [VertragsZusatzinfos_ZusatzhinweisHzvGruen], [VertragsZusatzinfos_BvgKennzeichen], [VertragsZusatzinfos_Begruendungspflicht], [VertragsZusatzinfos_StellvertreterMitgliedsNr], [VertragsZusatzinfos_StellvertreterMediId], [VertragsZusatzinfos_StellvetreterLanr], [Created], [DatasetCreated], [UserCreated], [LastChanged], [DatasetLastChanged], [UserLastChanged], [IsArchiviert], [AsvTeamNummer], [StempelId], [DosierungsPflichtAuswahl], [IsKuenstlicheBefruchtung], [VertragsZusatzinfos_IsSet], [VertragsZusatzinfos_Wirkstoffzeile], [VertragsZusatzinfos_IsWirkstoffzeileActivated], [IsErezept], [AbgabehinweisApotheke])" +
-                    "VALUES (" + IDvalue + ", N'f4835bad-c18b-4653-b706-89b6f5b06772', 0, " + IDvalue + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'2', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'FLOXAL AUGENTROPFEN 3mg ATR 5ml N1\n" +
+                    "VALUES (" + IDvalue + ", N'', 0, " + IDvalue + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'2', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" + MedicationDbLookup.getMedicationName(tableEntry) + "\n" +
                     "PZN" + bundleStructure.getMedicationStatement().getPZN() + " »" + bundleStructure.getMedicationStatement().getDosage() + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, 1, 1, 0, 0, NULL, 0, 0, NULL, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL, N'101', 3, 0, 0, NULL, 0, 1, NULL)\n" +
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] OFF\n" +
 //                    Insert into VerordnungsmodulMedikationDbo table (Prescription module medication table)
@@ -107,12 +125,12 @@ public class IsynetMSQLConnector {
 //                    Insert into ScheinMed table
                     "SET IDENTITY_INSERT [dbo].[ScheinMed] ON\n" +
                     "INSERT [dbo].[ScheinMed] ([Nummer], [ScheinNummer], [PatientNummer], [Suchwort], [PZN], [Verordnungstyp], [Betragsspeicher], [AVP], [Festbetrag], [Bruttobetrag], [Nettobetrag], [Diagnose], [ICD], [AutIdem], [Grenzpreis], [MandantGeändert], [UserGeändert], [DatumÄnderung], [UnteresPreisdrittel], [KrablLinkNrRezept], [BTMGebühr], [DDDPackung], [Übertragen], [FarbKategorie], [Merkmal], [KrablLinkNr])" +
-                    "VALUES (" + IDvalue + ", 1," + patientNummer + ", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'LM', 100, 16.6500, 0.0000, 16.6500, 11.6500, N'', N'', 1, 0.0000, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0.0000, 0, 0, N'', N''," + IDvalue + ")\n" +
+                    "VALUES (" + IDvalue + ", 1," + patientNummer + ", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'LM', 100, " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, " + MedicationDbLookup.getAVP(tableEntry) + ", 11.6500, N'', N'', 1, 0.0000, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0.0000, 0, 0, N'', N''," + IDvalue + ")\n" +
                     "SET IDENTITY_INSERT [dbo].[ScheinMed] OFF\n" +
 //                    Insert into KrablLink table
                     "SET IDENTITY_INSERT [dbo].[KrablLink] ON\n" +
                     "INSERT [dbo].[KrablLink] ([Nummer], [PatientNummer], [Satzart], [Datum], [Kategorie], [Kurzinfo], [Passwort], [MandantGeändert], [UserGeändert], [DatumÄnderung], [ScheinNummer], [GruppenNummer], [Hintergrundfarbe], [Detail], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantFremd], [FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
-                    "VALUES (" + IDvalue + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N'Medikament: Floxal Augentropfen 5 ml N1, Dos.: 1-0-1-0, PZN: 10166894, AVP: 16,65', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, N'\n" +
+                    "VALUES (" + IDvalue + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " + bundleStructure.getMedicationStatement().getDosage() + ", PZN: " + bundleStructure.getMedicationStatement().getPZN() + ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, N'\n" +
                     "', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
                     "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
 //                    Insert into KrablLinkID table
@@ -123,7 +141,7 @@ public class IsynetMSQLConnector {
 //                    Insert into ScheinMedDaten
                     "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] ON\n" +
                     "INSERT [dbo].[ScheinMedDaten] ([Nummer], [Suchwort], [Klasse], [Typ], [Langtext], [Packungsart], [NNummer], [Darreichungsform], [Packungsgröße], [PZNummer], [StandardDosierung], [Betrag], [Festbetrag], [Grenzpreis], [Anatomieklasse], [Hersteller], [Wirkstoff], [Generika], [NurPrivatrezept], [BTMPräparat], [Bevorzugt], [Geschützt], [AußerHandel], [Negativliste], [Rückruf], [Datenanbieter], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantGeändert], [UserGeändert], [DatumÄnderung], [UnteresPreisdrittel], [OTC], [Zuzahlungsbefreit], [WirkstoffMenge], [WirkstoffMengenEinheit], [LetzterPreis], [PreisÄnderung], [LifeStyle], [ApothekenPflicht], [VerschreibungsPflicht], [Reimport], [AlternativeVorhanden], [ZweitMeinung], [PNH], [PNHBezeichnung], [DDDKosten], [OTX], [TRezept], [KombiPraeparat], [AutIdemKennung], [PriscusListe], [NeueinfuehrungsDatum], [HerstellerID], [ErstattungsBetrag], [DokuPflichtTransfusion], [VOEinschraenkungAnlage3], [Therapiehinweis], [MedizinProdukt], [MPVerordnungsfaehig], [MPVOBefristung], [Verordnet], [MitReimport], [WSTZeile], [WSTNummer], [IMMVorhanden], [Sortierung], [ATCLangtext], [ErstattungStattAbschlag], [VertragspreisNach129_5], [NormGesamtzuzahlung], [Verordnungseinschraenkung], [Verordnungsausschluss], [VOAusschlussAnlage3])" +
-                    "VALUES ("+ IDvalue +", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', 1, N'Floxal Augentropfen', 1, 1, 0, N'5', N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', 16.6500, 0.0000, 0.0000, N'S01AE01', N'Pharma Gerke Arzneimittelvertriebs GmbH', N'Ofloxacin', 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0, N'', N'', 0, N'', N'Ofloxacin', 0, 0, 0.0000, 0, 0, 0)\n" +
+                    "VALUES ("+ IDvalue +", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', 1, N'" + MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, 0.0000, N'S01AE01', N'Pharma Gerke Arzneimittelvertriebs GmbH', N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0, N'', N'', 0, N'', N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0.0000, 0, 0, 0)\n" +
                     "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] OFF\n" +
 //                    Insert into VerordnungsmodulDosierungDbo table
                     "SET IDENTITY_INSERT [dbo].[VerordnungsmodulDosierungDbo] ON\n" +
