@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: ssh-tunnel
   labels:
     app: ssh-tunnel
 spec:
+  serviceName: ssh-tunnel-service
   replicas: 1
   selector:
     matchLabels:
@@ -14,6 +15,8 @@ spec:
       labels:
         app: ssh-tunnel
     spec:
+      securityContext:
+        fsGroup: 5050
       containers:
         - name: ssh-tunnel
           image: 765415433338.dkr.ecr.eu-central-1.amazonaws.com/ssh-tunnel:$IMAGE_TAG
@@ -33,21 +36,25 @@ spec:
                   name: broker-secret
                   key: password
           volumeMounts:
-            - name: ssh-tunnel-volume
-              subPath: athorized_keys
-              mountPath: /home/jboss/.ssh/authorized_keys
-      volumes:
-        - name: ssh-tunnel-volume
-          configMap:
-            name: ssh-tunnel-config
+            - name: ssh-tunnel-data
+              mountPath: /home/jboss/.ssh
+  volumeClaimTemplates:
+    - metadata:
+        name: ssh-tunnel-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "ssh-tunnel"
+        resources:
+          requests:
+            storage: 50m
 ---
 
-apiVersion: v1
-kind: ConfigMap
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
 metadata:
-  name: ssh-tunnel-config
-data:
-  authorized_keys: |
+  name: ssh-tunnel
+provisioner: kubernetes.io/aws-ebs
+volumeBindingMode: WaitForFirstConsumer
 
 ---
 
