@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
@@ -79,7 +80,7 @@ public class T2MedConnector {
 
         JsonObject amdbSearchQueryJson = buildAmdbSearchQueryJson(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
         JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearchQueryJson);
-
+        
         // $medicationName = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "name"
         JsonObject medicationPacking = amdbResponseJson.getJsonArray("entries").get(0).asJsonObject().getJsonObject("packung");
         String medicationName = medicationPacking.getString("name");
@@ -94,69 +95,53 @@ public class T2MedConnector {
         // $preisReimportTeratogenFiktivZugelassen = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "preisReimportTeratogenFiktivZugelassen"
         String preisReimportTeratogenFiktivZugelassen = medicationPacking.getString("preisReimportTeratogenFiktivZugelassen");
         // $atcCodes = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "atcCodes"
-        String atcCode0 = medicationPacking.getJsonArray("atcCodes").getString(0);
+        JsonArray atcCodes = medicationPacking.getJsonArray("atcCodes");
         // $einheitenname = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "einheitenname"
         String einheitenname = medicationPacking.getString("einheitenname");
         // $einheitennameFuerReichweitenberechnung = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "einheitennameFuerReichweitenberechnung"
         String einheitennameFuerReichweitenberechnung = medicationPacking.getString("einheitennameFuerReichweitenberechnung");
         // $wirkstoff = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstoff" -First 1
-        JsonObject wirkstoffWirkstaerken0 = medicationPacking.getJsonArray("wirkstoffWirkstaerken").get(0).asJsonObject();
-        String wirkstoff = wirkstoffWirkstaerken0.getString("wirkstoff");
-        // $wirkstaerkeWert = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "wert"
-        JsonObject wirkstaerke = wirkstoffWirkstaerken0.getJsonObject("wirkstaerke");
-        int wirkstaerkeWert = wirkstaerke.getInt("wert");
-        // $wirkstaerkeEinheit = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "einheit"
-        String wirkstaerkeEinheit = wirkstaerke.getString("einheit");
+        JsonArray wirkstoffWirkstaerken = medicationPacking.getJsonArray("wirkstoffWirkstaerken");
+        // JsonObject wirkstoffWirkstaerken0 = medicationPacking.getJsonArray("wirkstoffWirkstaerken").get(0).asJsonObject();
+        // String wirkstoff = wirkstoffWirkstaerken0.getString("wirkstoff");
+        // // $wirkstaerkeWert = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "wert"
+        // JsonObject wirkstaerke = wirkstoffWirkstaerken0.getJsonObject("wirkstaerke");
+        // int wirkstaerkeWert = wirkstaerke.getInt("wert");
+        // // $wirkstaerkeEinheit = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "wirkstoffWirkstaerken" | Select-Object -ExpandProperty "wirkstaerke" -First 1 | Select-Object -ExpandProperty "einheit"
+        // String wirkstaerkeEinheit = wirkstaerke.getString("einheit");
 
-        JsonObject eRezept = buildErezept(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
-        // JsonObject eRezeptResponseJson = t2MedClient.createAndSavePrescription(eRezept);
+        JsonObject eRezeptJson = buildErezept(
+            patientReference, 
+            doctorRoleReference, 
+            caseReference, 
+            caseLocationReference, 
+            userReference,
+            medicationName,
+            handelsname,
+            erezeptName,
+            herstellername,
+            pzn,
+            preis,
+            preisReimportTeratogenFiktivZugelassen,
+            atcCodes,
+            einheitenname,
+            einheitennameFuerReichweitenberechnung,
+            wirkstoffWirkstaerken,
+            1,
+            0,
+            0,
+            0
+        );
+        JsonObject eRezeptResponseJson = t2MedClient.createAndSavePrescription(eRezeptJson);
     }
 
-    private JsonObject buildAmdbSearchQueryJson(String patientReference, String doctorRoleReference, String caseReference, String caseLocationReference, String userReference, String pzn){
-        //{
-        //  "amdbSearchQueries": [
-        //      {
-        //          "searchtext": "$PZN"
-        //      }
-        //  ],
-        //  "arzneimittelverordnungenAnzeigen": true,
-        //  "ausserVetriebeAusblenden": false,
-        //  "deaktivierteVerordnungenAnzeigen": false,
-        //  "freitextverordnungenAnzeigen": true,
-        //  "kontext": {
-        //      "arztrolleRef": {
-        //          "objectId": {
-        //              "id": "$doctorReference"
-        //          }
-        //      },
-        //      "behandlungsfallRef": {
-        //          "objectId": {
-        //              "id": "$caseReference"
-        //          }
-        //      },
-        //      "behandlungsortRef": {
-        //          "objectId": {
-        //              "id": "$caseLocationReference"
-        //          }
-        //      },
-        //      "benutzerRef": {
-        //          "objectId": {
-        //              "id": "$userReference"
-        //          }
-        //      },
-        //      "patientRef": {
-        //          "objectId": {
-        //              "id": "$patientReference"
-        //          }
-        //      }
-        //  },
-        //  "reimportArzneimittelAusblenden": false,
-        //  "searchTerm": "$PZN",
-        //  "selectedFilters": [],
-        //  "start": 0,
-        //  "vorgangstyp": null,
-        //  "wirkstoffverordnungenAnzeigen": true
-        //}
+    private JsonObject buildAmdbSearchQueryJson(String patientReference, 
+                                                String doctorRoleReference, 
+                                                String caseReference, 
+                                                String caseLocationReference, 
+                                                String userReference, 
+                                                String pzn){
+
         JsonObject query = Json.createObjectBuilder()
         .add("amdbSearchQueries", 
                 Json.createArrayBuilder()
@@ -220,210 +205,198 @@ public class T2MedConnector {
                                     String doctorRoleReference, 
                                     String caseReference, 
                                     String caseLocationReference, 
-                                    String userReference, 
-                                    String pzn) {
+                                    String userReference,
+                                    String medicationName,
+                                    String handelsname,
+                                    String erezeptName,
+                                    String herstellername,
+                                    String pzn,
+                                    String preis,
+                                    String preisReimportTeratogenFiktivZugelassen,
+                                    JsonArray atcCodes,
+                                    String einheitenname,
+                                    String einheitennameFuerReichweitenberechnung,
+                                    JsonArray wirkstoffWirkstaerken,
+                                    int dosierschemaMorgens,
+                                    int dosierschemaMittags,
+                                    int dosierschemaAbends,
+                                    int dosierschemaNachts
+                                    ) {
+        // created from file resources/.../eRezept.json using https://manuelb.github.io/json2jsr353/
         JsonObject erezept = Json.createObjectBuilder()
         .add("kontext",
             Json.createObjectBuilder()
             .add("arztrolleRef",
                 Json.createObjectBuilder()
-                .add("objectId",
-                        Json.createObjectBuilder()
-                        .add("id",doctorRoleReference)
-                )
+                .add("objectId", 
+                     Json.createObjectBuilder().add("id", doctorRoleReference))
             )
             .add("aufrufenderVorgang", 4)
             .add("behandlungsfallRef",
-                Json.createObjectBuilder()
-                .add("objectId",
-                        Json.createObjectBuilder()
-                        .add("id",caseReference)
-                )
+                 Json.createObjectBuilder()
+                 .add("objectId", 
+                      Json.createObjectBuilder().add("id", caseReference))
             )
             .add("behandlungsortRef",
-                Json.createObjectBuilder()
-                .add("objectId",
-                        Json.createObjectBuilder()
-                        .add("id",caseLocationReference)
-                )
+                 Json.createObjectBuilder()
+                 .add("objectId", 
+                      Json.createObjectBuilder().add("id", caseLocationReference))
             )
             .add("benutzerRef",
-                Json.createObjectBuilder()
-                .add("objectId",
-                        Json.createObjectBuilder()
-                        .add("id",userReference)
-                )
+                 Json.createObjectBuilder()
+                 .add("objectId", 
+                      Json.createObjectBuilder().add("id", userReference))
             )
             .add("patientRef",
-                Json.createObjectBuilder()
-                .add("objectId",
-                        Json.createObjectBuilder()
-                        .add("id",patientReference)
-                )
+                 Json.createObjectBuilder()
+                 .add("objectId", 
+                      Json.createObjectBuilder().add("id", patientReference))
             )
             .add("stationRef", JsonValue.NULL)
+        )
+        .add("rezepteUndVerordnungen", 
+             Json.createArrayBuilder()
+                .add(Json.createObjectBuilder()
+                    .add("first",
+                         Json.createObjectBuilder()
+                         .add("ausstellungszeitpunkt", JsonValue.NULL)
+                         .add("begruendungspflicht", JsonValue.FALSE)
+                         .add("bvg", JsonValue.FALSE)
+                         .add("erezeptInfo",
+                              Json.createObjectBuilder()
+                              .add("absenderId", JsonValue.NULL)
+                              .add("accessCode", JsonValue.NULL)
+                              .add("erezeptId", JsonValue.NULL)
+                              .add("ref",
+                                    Json.createObjectBuilder()
+                                    .add("objectId", JsonValue.NULL)
+                                    .add("revision", 0)
+                              )
+                              .add("signaturHbaIccsn", JsonValue.NULL)
+                              .add("signaturzeitpunkt", JsonValue.NULL)
+                              .add("signiertesRezeptVerweis", JsonValue.NULL)
+                              .add("taskId", JsonValue.NULL)
+                              .add("versandzeitpunkt", JsonValue.NULL)
+
+                         )                         
+                         .add("ersatzverordnung", JsonValue.FALSE)
+                         .add("hilfsmittel", JsonValue.FALSE)
+                         .add("impfstoff", JsonValue.FALSE)
+                         .add("ersatzverordnung", JsonValue.FALSE)
+                         .add("informationszeitpunkt", JsonValue.NULL)
+                         .add("notdienstgebuehrenfrei", JsonValue.FALSE)
+                         .add("ref",
+                              Json.createObjectBuilder()
+                              .add("objectId", JsonValue.NULL)
+                              .add("revision", 0)
+                         )
+                         .add("rezeptgebuehrenfrei", JsonValue.FALSE)
+                         .add("sonstigerKostentraeger", JsonValue.FALSE)
+                         .add("sprechstundenbedarf", JsonValue.FALSE)
+                         .add("uebertragungsweg", 2)
+                         .add("unfallbetrieb", JsonValue.NULL)
+                         .add("unfallstatus", 0)
+                         .add("unfalltag", JsonValue.NULL)
+                    )
+                    .add("second",
+                        Json.createObjectBuilder()
+                        .add("alsERezeptVerordnet", JsonValue.FALSE)
+                        .add("alternativeDosierangabe", "Dj")
+                        .add("anzahlEinheiten", JsonValue.NULL)
+                        .add("anzahlPackungen", 1)
+                        .add("arzneimittelKategorie", JsonValue.NULL)
+                        .add("autIdem", JsonValue.FALSE)
+                        .add("benutzeERezept", JsonValue.TRUE)
+                        .add("benutzeRezeptinformationstyp", 34)
+                        .add("benutzeSekundaerenRezeptinformationstyp", JsonValue.FALSE)
+                        .add("btmKennzeichen", JsonValue.NULL)
+                        .add("dosierschema",
+                            Json.createObjectBuilder()
+                            .add("freitext", JsonValue.NULL)
+                            .add("morgens", dosierschemaMorgens)
+                            .add("mittags", dosierschemaMittags)
+                            .add("abends",  dosierschemaAbends)
+                            .add("nachts",  dosierschemaNachts)
+                        )
+                        .add("dosierungAufRezept", JsonValue.TRUE)
+                        .add("erezeptZusatzdaten",
+                                Json.createObjectBuilder()
+                                .add("abgabehinweis", JsonValue.NULL)
+                                .add("mehrfachverordnungen",
+                                        Json.createArrayBuilder()
+                                )
+                        )
+                        .add("erezeptfaehig", JsonValue.TRUE)
+                        .add("ersatzverordnungGemaessParagraph31", JsonValue.FALSE)
+                        .add("farbmarkierung", JsonValue.NULL)
+                        .add("farbmarkierungZumVerordnungszeitpunkt", JsonValue.NULL)
+                        .add("freitext", JsonValue.NULL)
+                        .add("hinweis", JsonValue.NULL)
+                        .add("layerIndex", 1)
+                        .add("letzterInformationstyp", JsonValue.NULL)
+                        .add("letzterVerordnungszeitpunkt", JsonValue.NULL)
+                        .add("medikationsplanBestellposition", JsonValue.NULL)
+                        .add("mehrfachverordnungId", JsonValue.NULL)
+                        .add("packung",
+                             Json.createObjectBuilder()
+                             .add("amrlHinweiseVorhanden", JsonValue.TRUE)
+                             .add("anlageIIIAnzeigen", JsonValue.TRUE)
+                             .add("anlageVIITeilB", JsonValue.FALSE)
+                             .add("anstaltspackung", JsonValue.FALSE)
+                             .add("anzahlEinheiten", 20)
+                             .add("anzahlEinheitenFuerReichweitenberechnung", 20)
+                             .add("anzahlTeilbareStuecke", 2)
+                             .add("arzneimittelVertriebsstatus", JsonValue.NULL)
+                             .add("atcCodes", atcCodes )
+                             .add("aufNegativliste", JsonValue.FALSE)
+                             .add("bilanzierteDiaet", JsonValue.FALSE)
+                             .add("darreichungsform",
+                                    Json.createObjectBuilder()
+                                    .add("freitext", JsonValue.NULL)
+                                    .add("ifaCode", JsonValue.NULL)
+                             )
+                             .add("darreichungsformIfaCode", "")
+                             .add("einheitenname", einheitenname)
+                             .add("einheitennameFuerReichweitenberechnung", einheitennameFuerReichweitenberechnung)
+                             .add("erezeptName", erezeptName)
+                             .add("fiktivZugelassenesMedikament", JsonValue.FALSE)
+                             .add("handelsname", handelsname)
+                             .add("herstellername", herstellername)
+                             .add("name", medicationName)
+                             .add("lifeStyleStatus", 0)
+                             .add("lifestyleStatusAnzeigen", JsonValue.TRUE)
+                             .add("medizinprodukt", JsonValue.FALSE)
+                             .add("medizinproduktAnzeigen", JsonValue.FALSE)
+                             .add("negativlisteAnzeigen", JsonValue.TRUE)
+                             .add("otcOtxAnzeigen", JsonValue.TRUE)
+                             .add("otcStatus", JsonValue.FALSE)
+                             .add("otxStatus", JsonValue.FALSE)
+                             .add("packungsgroesse", JsonValue.NULL)
+                             .add("pzn", pzn)
+                             .add("reimport", JsonValue.FALSE)
+                             .add("removed", JsonValue.FALSE)
+                             .add("rezeptStatus", 2)
+                             .add("teratogen", JsonValue.FALSE)
+                             .add("verbandmittel", JsonValue.FALSE)
+                             .add("verbandmittelAnzeigen", JsonValue.TRUE)
+                             .add("verordnungsfaehigesMedizinprodukt", JsonValue.FALSE)
+                             .add("vertriebsStatus", JsonValue.NULL)
+                             .add("vertriebsstatusAnzeigen", JsonValue.TRUE)
+                             .add("wirkstoffWirkstaerken", wirkstoffWirkstaerken)
+                        )
+                        .add("pimPraeparat", JsonValue.FALSE)
+                        .add("primaererRezeptinformationstyp", 34)
+                        .add("requiresArzneimittelempfehlungenCheck", JsonValue.FALSE)
+                        .add("sekundaererRezeptinformationstyp", 98)
+                        .add("verordnungsausschluss", JsonValue.FALSE)
+                        .add("verordnungseinschraenkung", JsonValue.TRUE)
+                        .add("wirkstoff", JsonValue.NULL)                     
+                    )
+                )
         )
         .build();
 
         return erezept;
-        // {
-        //     "kontext": {
-        //         "arztrolleRef": {
-        //             "objectId": {
-        //                 "id": "$doctorRoleReference"
-        //             }
-        //         },
-        //         "aufrufenderVorgang": 4,
-        //         "behandlungsfallRef": {
-        //             "objectId": {
-        //                 "id": "$caseReference"
-        //             }
-        //         },
-        //         "behandlungsortRef": {
-        //             "objectId": {
-        //                 "id": "$caseLocationReference"
-        //             }
-        //         },
-        //         "benutzerRef": {
-        //             "objectId": {
-        //                 "id": "$userReference"
-        //             }
-        //         },
-        //         "patientRef": {
-        //             "objectId": {
-        //                 "id": "$patientReference"
-        //             }
-        //         },
-        //         "stationRef": null
-        //     },
-        //     "rezepteUndVerordnungen": [
-        //         {
-        //             "first": {
-        //                 "ausstellungszeitpunkt": null,
-        //                 "begruendungspflicht": false,
-        //                 "bvg": false,
-        //                 "erezeptInfo": {
-        //                     "absenderId": null,
-        //                     "accessCode": null,
-        //                     "erezeptId": null,
-        //                     "ref": {
-        //                         "objectId": null,
-        //                         "revision": 0
-        //                     },
-        //                     "signaturHbaIccsn": null,
-        //                     "signaturzeitpunkt": null,
-        //                     "signiertesRezeptVerweis": null,
-        //                     "taskId": null,
-        //                     "versandzeitpunkt": null
-        //                 },
-        //                 "ersatzverordnung": false,
-        //                 "hilfsmittel": false,
-        //                 "impfstoff": false,
-        //                 "informationszeitpunkt": null,
-        //                 "notdienstgebuehrenfrei": false,
-        //                 "ref": {
-        //                     "objectId": null,
-        //                     "revision": 0
-        //                 },
-        //                 "rezeptgebuehrenfrei": false,
-        //                 "sonstigerKostentraeger": false,
-        //                 "sprechstundenbedarf": false,
-        //                 "uebertragungsweg": 2,
-        //                 "unfallbetrieb": null,
-        //                 "unfallstatus": 0,
-        //                 "unfalltag": null
-        //             },
-        //             "second": {
-        //                 "alsERezeptVerordnet": false,
-        //                 "alternativeDosierangabe": "Dj",
-        //                 "anzahlEinheiten": null,
-        //                 "anzahlPackungen": 1,
-        //                 "arzneimittelKategorie": null,
-        //                 "autIdem": false,
-        //                 "benutzeERezept": true,
-        //                 "benutzeRezeptinformationstyp": 34,
-        //                 "benutzeSekundaerenRezeptinformationstyp": false,
-        //                 "btmKennzeichen": null,
-        //                 "dosierschema": {
-        //                     "$abends": 0,
-        //                     "freitext": null,
-        //                     "$mittags": 0,
-        //                     "$morgens": 1,
-        //                     "$nachts": 0
-        //                 },
-        //                 "dosierungAufRezept": true,
-        //                 "erezeptZusatzdaten": {
-        //                     "abgabehinweis": null,
-        //                     "mehrfachverordnungen": []
-        //                 },
-        //                 "erezeptfaehig": true,
-        //                 "ersatzverordnungGemaessParagraph31": false,
-        //                 "farbmarkierung": null,
-        //                 "farbmarkierungZumVerordnungszeitpunkt": null,
-        //                 "freitext": null,
-        //                 "hinweis": null,
-        //                 "layerIndex": 1,
-        //                 "letzterInformationstyp": null,
-        //                 "letzterVerordnungszeitpunkt": null,
-        //                 "medikationsplanBestellposition": null,
-        //                 "mehrfachverordnungId": null,
-        //                 "packung": {
-        //                     "amrlHinweiseVorhanden": true,
-        //                     "anlageIIIAnzeigen": true,
-        //                     "anlageVIITeilB": false,
-        //                     "anstaltspackung": false,
-        //                     "anzahlEinheiten": 20,
-        //                     "anzahlEinheitenFuerReichweitenberechnung": 20,
-        //                     "anzahlTeilbareStuecke": 2,
-        //                     "arzneimittelVertriebsstatus": null,
-        //                     "atcCodes": [
-        //                         "$atcCodes"
-        //                     ],
-        //                     "aufNegativliste": false,
-        //                     "bilanzierteDiaet": false,
-        //                     "darreichungsform": {
-        //                         "freitext": null,
-        //                         "ifaCode": null
-        //                     },
-        //                     "darreichungsformIfaCode": "TAB",
-        //                     "einheitenname": "$einheitenname",
-        //                     "einheitennameFuerReichweitenberechnung": "$einheitennameFuerReichweitenberechnung",
-        //                     "erezeptName": "$erezeptName",
-        //                     "fiktivZugelassenesMedikament": false,
-        //                     "handelsname": "$handelsname",
-        //                     "herstellername": "$herstellername",
-        //                     "name": "$name",
-        //                     "lifeStyleStatus": 0,
-        //                     "lifestyleStatusAnzeigen": true,
-        //                     "medizinprodukt": false,
-        //                     "medizinproduktAnzeigen": false,
-        //                     "negativlisteAnzeigen": true,
-        //                     "otcOtxAnzeigen": true,
-        //                     "otcStatus": false,
-        //                     "otxStatus": false,
-        //                     "packungsgroesse": "N1",
-        //                     "pzn": "$PZN",
-        //                     "reimport": false,
-        //                     "removed": false,
-        //                     "rezeptStatus": 2,
-        //                     "teratogen": false,
-        //                     "verbandmittel": false,
-        //                     "verbandmittelAnzeigen": true,
-        //                     "verordnungsfaehigesMedizinprodukt": false,
-        //                     "vertriebsStatus": null,
-        //                     "vertriebsstatusAnzeigen": true,
-        //                     "wirkstoffWirkstaerken": []
-        //                 },
-        //                 "pimPraeparat": false,
-        //                 "primaererRezeptinformationstyp": 34,
-        //                 "requiresArzneimittelempfehlungenCheck": false,
-        //                 "sekundaererRezeptinformationstyp": 98,
-        //                 "verordnungsausschluss": false,
-        //                 "verordnungseinschraenkung": true,
-        //                 "wirkstoff": null
-        //             }
-        //         }
-        //     ]
-        // }
     }
+
 }

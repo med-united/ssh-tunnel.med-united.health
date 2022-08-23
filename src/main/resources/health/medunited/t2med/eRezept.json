@@ -1,0 +1,157 @@
+{
+    "kontext": {
+        "arztrolleRef": {
+            "objectId": {
+                "id": ""
+            }
+        },
+        "aufrufenderVorgang": 4,
+        "behandlungsfallRef": {
+            "objectId": {
+                "id": ""
+            }
+        },
+        "behandlungsortRef": {
+            "objectId": {
+                "id": ""
+            }
+        },
+        "benutzerRef": {
+            "objectId": {
+                "id": ""
+            }
+        },
+        "patientRef": {
+            "objectId": {
+                "id": ""
+            }
+        },
+        "stationRef": null
+    },
+    "rezepteUndVerordnungen": [
+        {
+            "first": {
+                "ausstellungszeitpunkt": null,
+                "begruendungspflicht": false,
+                "bvg": false,
+                "erezeptInfo": {
+                    "absenderId": null,
+                    "accessCode": null,
+                    "erezeptId": null,
+                    "ref": {
+                        "objectId": null,
+                        "revision": 0
+                    },
+                    "signaturHbaIccsn": null,
+                    "signaturzeitpunkt": null,
+                    "signiertesRezeptVerweis": null,
+                    "taskId": null,
+                    "versandzeitpunkt": null
+                },
+                "ersatzverordnung": false,
+                "hilfsmittel": false,
+                "impfstoff": false,
+                "informationszeitpunkt": null,
+                "notdienstgebuehrenfrei": false,
+                "ref": {
+                    "objectId": null,
+                    "revision": 0
+                },
+                "rezeptgebuehrenfrei": false,
+                "sonstigerKostentraeger": false,
+                "sprechstundenbedarf": false,
+                "uebertragungsweg": 2,
+                "unfallbetrieb": null,
+                "unfallstatus": 0,
+                "unfalltag": null
+            },
+            "second": {
+                "alsERezeptVerordnet": false,
+                "alternativeDosierangabe": "Dj",
+                "anzahlEinheiten": null,
+                "anzahlPackungen": 1,
+                "arzneimittelKategorie": null,
+                "autIdem": false,
+                "benutzeERezept": true,
+                "benutzeRezeptinformationstyp": 34,
+                "benutzeSekundaerenRezeptinformationstyp": false,
+                "btmKennzeichen": null,
+                "dosierschema": {
+                    "$abends": 0,
+                    "freitext": null,
+                    "$mittags": 0,
+                    "$morgens": 1,
+                    "$nachts": 0
+                },
+                "dosierungAufRezept": true,
+                "erezeptZusatzdaten": {
+                    "abgabehinweis": null,
+                    "mehrfachverordnungen": []
+                },
+                "erezeptfaehig": true,
+                "ersatzverordnungGemaessParagraph31": false,
+                "farbmarkierung": null,
+                "farbmarkierungZumVerordnungszeitpunkt": null,
+                "freitext": null,
+                "hinweis": null,
+                "layerIndex": 1,
+                "letzterInformationstyp": null,
+                "letzterVerordnungszeitpunkt": null,
+                "medikationsplanBestellposition": null,
+                "mehrfachverordnungId": null,
+                "packung": {
+                    "amrlHinweiseVorhanden": true,
+                    "anlageIIIAnzeigen": true,
+                    "anlageVIITeilB": false,
+                    "anstaltspackung": false,
+                    "anzahlEinheiten": 20,
+                    "anzahlEinheitenFuerReichweitenberechnung": 20,
+                    "anzahlTeilbareStuecke": 2,
+                    "arzneimittelVertriebsstatus": null,
+                    "atcCodes": [],
+                    "aufNegativliste": false,
+                    "bilanzierteDiaet": false,
+                    "darreichungsform": {
+                        "freitext": null,
+                        "ifaCode": null
+                    },
+                    "darreichungsformIfaCode": "",
+                    "einheitenname": "",
+                    "einheitennameFuerReichweitenberechnung": "",
+                    "erezeptName": "",
+                    "fiktivZugelassenesMedikament": false,
+                    "handelsname": "",
+                    "herstellername": "",
+                    "name": "",
+                    "lifeStyleStatus": 0,
+                    "lifestyleStatusAnzeigen": true,
+                    "medizinprodukt": false,
+                    "medizinproduktAnzeigen": false,
+                    "negativlisteAnzeigen": true,
+                    "otcOtxAnzeigen": true,
+                    "otcStatus": false,
+                    "otxStatus": false,
+                    "packungsgroesse": "",
+                    "pzn": "",
+                    "reimport": false,
+                    "removed": false,
+                    "rezeptStatus": 2,
+                    "teratogen": false,
+                    "verbandmittel": false,
+                    "verbandmittelAnzeigen": true,
+                    "verordnungsfaehigesMedizinprodukt": false,
+                    "vertriebsStatus": null,
+                    "vertriebsstatusAnzeigen": true,
+                    "wirkstoffWirkstaerken": []
+                },
+                "pimPraeparat": false,
+                "primaererRezeptinformationstyp": 34,
+                "requiresArzneimittelempfehlungenCheck": false,
+                "sekundaererRezeptinformationstyp": 98,
+                "verordnungsausschluss": false,
+                "verordnungseinschraenkung": true,
+                "wirkstoff": null
+            }
+        }
+    ]
+}
