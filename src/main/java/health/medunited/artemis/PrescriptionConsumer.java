@@ -38,6 +38,10 @@ public class PrescriptionConsumer implements Runnable {
 
     private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
+    private static final String PVS_HEADER = "practiceManagementTranslation";
+
+    private static final String FINGERPRINT_HEADER = "receiverPublicKeyFingerprint";
+
     @Inject
     ConnectionFactory connectionFactory;
 
@@ -76,14 +80,14 @@ public class PrescriptionConsumer implements Runnable {
                     Message message = consumer.receive();
                     IDValue += 1;
                     if (message == null) return;
-                    if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
-                        String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
-                        String practiceManagement = message.getObjectProperty("practiceManagementTranslation").toString();
+                    if (message.propertyExists(FINGERPRINT_HEADER) && message.propertyExists(PVS_HEADER)) {
+                        String publicKey = message.getObjectProperty(FINGERPRINT_HEADER).toString();
+                        String practiceManagement = message.getObjectProperty(PVS_HEADER).toString();
                         String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
                         prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
                         log.info("Content of Bundle: " + prescription.getFhirBundle());
 
-                        if (Objects.equals(message.getStringProperty("practiceManagementTranslation"), "isynet")) {
+                        if (Objects.equals(message.getStringProperty(PVS_HEADER), "isynet")) {
 
                             JSONObject json = new JSONObject(prescription.getFhirBundle());
     //                        JSON bundle for testing
@@ -109,21 +113,22 @@ public class PrescriptionConsumer implements Runnable {
                             BundleStructure bundleStructure = new BundleStructure(practitioner, patient, medicationStatement, pharmacy);
                             isynetMSQLConnector.insertToIsynet(bundleStructure, IDValue);
 
-                        } else if (Objects.equals(message.getStringProperty("practiceManagementTranslation"), "t2med")) {
+                        } else if (Objects.equals(message.getStringProperty(PVS_HEADER), "t2med")) {
 
                             FhirContext ctx = FhirContext.forR4();
 
                             IParser parser = ctx.newJsonParser();
 
-                            org.hl7.fhir.r4.model.Bundle parsed = parser.parseResource(org.hl7.fhir.r4.model.Bundle.class, prescription.getFhirBundle());
+                            org.hl7.fhir.r4.model.Bundle parsedBundle = parser.parseResource(org.hl7.fhir.r4.model.Bundle.class, prescription.getFhirBundle());
 
-                            //TODO: parse Bundle before calling this method
-                            //t2MedConnector.createPrescriptionFromBundle(prescription.getFhirBundle());
+                            t2MedConnector.createPrescriptionFromBundle(parsedBundle);
                         }
 
                     } else {
                         log.info("Invalid content");
                     }
+                } catch (Exception e) {
+                    log.info(e.getMessage());
                 }
             }
         } catch (Exception e) {
@@ -131,7 +136,6 @@ public class PrescriptionConsumer implements Runnable {
         }
     }
 
-    //TODO: delete if not needed anymore
     private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {
         byte[] byteData = new byte[(int) message.getBodyLength()];
         message.readBytes(byteData);
