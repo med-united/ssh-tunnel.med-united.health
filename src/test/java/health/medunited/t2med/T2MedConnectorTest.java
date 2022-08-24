@@ -112,7 +112,7 @@ class T2MedConnectorTest {
                 "      \"fullUrl\": \"\",\n" +
                 "      \"resource\": {\n" +
                 "        \"resourceType\": \"Patient\",\n" +
-                "        \"id\": \"2777\",\n" +
+                "        \"id\": \"123457425\",\n" +
                 "        \"meta\": {\n" +
                 "          \"versionId\": \"1\",\n" +
                 "          \"lastUpdated\": \"2022-07-29T14:00:51.137+01:00\",\n" +
@@ -120,7 +120,7 @@ class T2MedConnectorTest {
                 "        },\n" +
                 "        \"text\": {\n" +
                 "          \"status\": \"generated\",\n" +
-                "          \"div\": \"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\"><div class=\\\"hapiHeaderText\\\">Emma <b>SCHNEIDER </b></div><table class=\\\"hapiPropertyTable\\\"><tbody><tr><td>Address</td><td><span>Orange avenue 5 </span><br/><span>Berlin </span></td></tr><tr><td>Date of birth</td><td><span>05 July 2022</span></td></tr></tbody></table></div>\"\n" +
+                "          \"div\": \"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\"><div class=\\\"hapiHeaderText\\\">Dena <b>A HOSSEINI</b></div><table class=\\\"hapiPropertyTable\\\"><tbody><tr><td>Address</td><td><span>Orange avenue 5 </span><br/><span>Berlin </span></td></tr><tr><td>Date of birth</td><td><span>05 July 2022</span></td></tr></tbody></table></div>\"\n" +
                 "        },\n" +
                 "        \"name\": [\n" +
                 "          {\n" +
@@ -132,7 +132,7 @@ class T2MedConnectorTest {
                 "          }\n" +
                 "        ],\n" +
                 "        \"gender\": \"female\",\n" +
-                "        \"birthDate\": \"2022-07-05\",\n" +
+                "        \"birthDate\": \"1977-05-22\",\n" +
                 "        \"address\": [\n" +
                 "          {\n" +
                 "            \"use\": \"home\",\n" +
@@ -172,7 +172,7 @@ class T2MedConnectorTest {
                 "          \"text\": \"APOGEN Ibuprofen 400 Schmerzmittel Filmtabletten \"\n" +
                 "        },\n" +
                 "        \"subject\": {\n" +
-                "          \"reference\": \"Patient/2777\"\n" +
+                "          \"reference\": \"Patient/123457425\"\n" +
                 "        },\n" +
                 "        \"informationSource\": {\n" +
                 "          \"reference\": \"Practitioner/2776\"\n" +
@@ -184,7 +184,7 @@ class T2MedConnectorTest {
                 "        ],\n" +
                 "        \"dosage\": [\n" +
                 "          {\n" +
-                "            \"text\": \"0-0-1-0\"\n" +
+                "            \"text\": \"2-0-1-0\"\n" +
                 "          }\n" +
                 "        ]\n" +
                 "      }\n" +
