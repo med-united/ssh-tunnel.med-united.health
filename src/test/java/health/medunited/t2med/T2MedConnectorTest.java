@@ -125,9 +125,9 @@ class T2MedConnectorTest {
                 "        \"name\": [\n" +
                 "          {\n" +
                 "            \"use\": \"official\",\n" +
-                "            \"family\": \"Schneider\",\n" +
+                "            \"family\": \"A Hosseini\",\n" +
                 "            \"given\": [\n" +
-                "              \"Emma\"\n" +
+                "              \"Dena\"\n" +
                 "            ]\n" +
                 "          }\n" +
                 "        ],\n" +
