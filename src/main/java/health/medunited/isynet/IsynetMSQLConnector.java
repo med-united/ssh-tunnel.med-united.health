@@ -19,12 +19,12 @@ public class IsynetMSQLConnector {
     private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
     public void createPatient(BundleStructure bundleStructure, int IDValue, Statement stmt) throws SQLException {
-        IDValue = 11;
+        IDValue = 7;
 
-        String SQL_delete_Patient = "DELETE FROM Patient WHERE Nummer > 4";
-        String SQL_delete_TagProtokoll = "DELETE FROM TagProtokoll WHERE PatientNummer > 4";
-        String SQL_delete_KrablLink = "DELETE FROM KrablLink WHERE PatientNummer > 4";
-        String SQL_delete_Schein = "DELETE FROM Schein WHERE Nummer > 4";
+        String SQL_delete_Patient = "DELETE FROM Patient WHERE Nummer >= 0";
+        String SQL_delete_TagProtokoll = "DELETE FROM TagProtokoll WHERE PatientNummer >= 0";
+        String SQL_delete_KrablLink = "DELETE FROM KrablLink WHERE PatientNummer >= 0";
+        String SQL_delete_Schein = "DELETE FROM Schein WHERE Nummer >= 0";
         stmt.execute(SQL_delete_Patient);
         stmt.execute(SQL_delete_TagProtokoll);
         stmt.execute(SQL_delete_KrablLink);
@@ -55,14 +55,27 @@ public class IsynetMSQLConnector {
 //                  SET XACT_ABORT ON: in case of an error, rollback will be issued automatically
                     "SET XACT_ABORT ON\n" +
                     "begin transaction\n" +
-//                  "SET IDENTITY_INSERT [dbo].[Patient] ON\n" +
-                    "INSERT [dbo].[Patient] ([Nummer],[PublicNummer],[Suchwort],[Name],[Vorname],[Anrede],[Geburtsdatum],[Geschlecht],[Straße],[LKZ],[PLZ],[Ort],[Versichertenart],[Privat],[IKNr],[KasseSuchwort],[Versichertenstatus],[OstWestStatus],[MandantAnlage],[DatumAnlage],[FarblicheKennzeichnung],[Raucher],[OIKennung],[SoundexName],[AbrechnungPVS],[PostfachLKZ],[PibsAutoAkt],[KISFreigabe],[DatumÄnderung],[UserGeändert],[MandantGeändert],[UserAnlage])" +
-                    "VALUES(" + IDvalue + ", " + IDvalue + ", '" + bundleStructure.getPatient().getLastName() + "','" + bundleStructure.getPatient().getLastName() + "','" + bundleStructure.getPatient().getFirstName() + "','" + anrede + "',{d '" + bundleStructure.getPatient().getBirthDate() + "'},'" + geschlecht + "','" + bundleStructure.getPatient().getStreet() + "','D','" + bundleStructure.getPatient().getPostalCode() + "','" + bundleStructure.getPatient().getCity() + "','M',0,'101575519','TechnikerKra','1000',1,1,{d '" + timestamp1 + "'},1,-2,-2,'',-2,'D',1,0,{ts '" + timestamp2 + "'},1,1,1)\n" +
-//                  "SET IDENTITY_INSERT [dbo].[Patient] OFF\n" +
+//                  Patient table
+                    "INSERT [dbo].[Patient] ([Nummer],[PublicNummer],[Suchwort],[Name],[Vorname],[Anrede],[Geburtsdatum],[Geschlecht],[Straße],[LKZ],[PLZ],[Ort],[Versichertenart],[IKNr],[KasseSuchwort],[Versichertenstatus],[OstWestStatus],[MandantAnlage],[DatumAnlage],[FarblicheKennzeichnung],[Raucher],[OIKennung],[SoundexName],[AbrechnungPVS],[Hausnummer],[PostfachPLZ],[PostfachOrt],[PostfachLKZ],[PibsAutoAkt],[KISFreigabe],[DatumÄnderung],[UserGeändert],[MandantGeändert],[UserAnlage])" +
+                    "VALUES(" + IDvalue + ", " + IDvalue + ", '" + bundleStructure.getPatient().getFirstName() + "','" + bundleStructure.getPatient().getLastName() + "','" + bundleStructure.getPatient().getFirstName() + "','" + anrede + "',{d '" + bundleStructure.getPatient().getBirthDate() + "'},'" + geschlecht + "','" + bundleStructure.getPatient().getStreet() + "','D','" + bundleStructure.getPatient().getPostalCode() + "','" + bundleStructure.getPatient().getCity() + "','M','101575519','TechnikerKra','1000',1,1,{d '" + timestamp1 + "'},1,-2,-2,'S7500',-2,'140','','','D',1,0,{ts '" + timestamp2 + "'},1,1,1)\n" +
+//                  KrablLink table
+                    "INSERT [dbo].[KrablLink] ([Uhrzeitanlage],[PatientNummer],[Satzart],[Datum],[Kategorie],[Kurzinfo],[Passwort],[ScheinNummer],[Hintergrundfarbe],[Detail],[FreigabeStatus],[VersandStatus],[DatumÄnderung],[UserGeändert],[MandantGeändert],[DatumAnlage],[UserAnlage],[MandantAnlage])" +
+                    "VALUES({ts '1899-12-30 " + timestamp3 + "'}," + IDvalue + ",40,{d '" + timestamp1 + "'},'KKEIN','',0,0,0,'<KKData BEHANDLER=\"\"></KKData>',0,0,{ts '" + timestamp1 + " " + timestamp3 + "'},1,1,{d '" + timestamp1 + "'},1,1)\n" +
+//                  Tagprotokoll table
                     "INSERT [dbo].[TagProtokoll] ([PatientNummer],[ScheinNummer],[Info],[Suchwort],[Datum],[LinkNummer],[Satzart],[Text],[Mandant],[Benutzer],[Uhrzeit])" +
                     "VALUES(" + IDvalue + "," + IDvalue + ",'" + bundleStructure.getPatient().getLastName() + ", " + bundleStructure.getPatient().getFirstName() + " (" + IDvalue + ")','Anmeldung',{d '" + timestamp1 + "'},0,3000,'Neuer Patient erfasst.',1,1,{t '" + timestamp3 + "'})\n" +
+//                  Schein table
                     "INSERT [dbo].[Schein] ([Nummer],[PatientNummer],[KostenträgerTyp],[Kostenträgeruntergruppe],[Zonenkennzeichen],[Scheinart],[Scheinuntergruppe],[Quartal],[Abrechnungsquartal],[VersichertenNr],[Anrede],[Namenszusatz],[Titel],[Name],[Vorname],[Geburtsdatum],[LKZ],[PLZ],[Ort],[Straße],[Versichertenart],[Geschlecht],[Chipkartenlesedatum],[Gültigkeitsdatum],[IKNr],[KasseSuchwort],[Versichertenstatus],[OstWestStatus],[GO],[Abrechnungsgebiet],[Hinweis],[Hinweisschalter],[Abgerechnet],[Abrechnungssperre],[Nachzügler],[Ersatzverfahren],[PVS],[Markiert],[Ausgelagert],[MandantAnlage],[UserAnlage],[DatumAnlage],[MandantGeändert],[UserGeändert],[DatumÄnderung],[KVDT],[KVPLZ],[WOP],[Rechnungsschema],[KartenleserZNr],[KBVDatum],[DatumAusstellung],[DatumGültigkeit],[DatumAUBis],[DatumEntbindung],[UrsacheDLeidens],[Behandler],[KennO1],[KennO3],[MuVoLSR],[MuVoAboRh],[MuVoHAH],[MuVoAK],[SKTZusatz],[SKTGültigVon],[SKTGültigBis],[SKTPerson],[PTAnerkannt],[PTKlärungSU],[PTDatumBescheid],[PLZErst],[ArztNrErst],[ÜberweisungArt],[ÜberweisungAn],[ÜberweisungVon],[ÜberwVFremd],[Weiterbehandler],[DiagnoseVerdacht],[ErläuternderText],[Fallnummer],[Bemerkung],[ScheinAbgegeben],[PQuittung],[ArztPatientenKontakt],[KHFallnummer],[ChipCardType],[UhrzeitAnlage],[Abrechnungsverfahren],[KennzifferSA],[PflegekasseSuchwort],[PflegekasseIKNr],[Überweisung],[ÜberweisungVonLANR],[ErstveranlasserLANR],[GUID],[ICCSN],[IKNrGKV],[SAPVersVerhältnis],[SKTBemerkung],[Diagnose4207],[Befund4208],[Auftrag4205],[EinschränkungLeistung4204],[VersichertenNrHistorisch],[HzVPraeventiv],[CDMVersion],[Hausnummer],[Anschriftenzusatz],[Vorsatzwort],[PostfachPLZ],[PostfachOrt],[Postfach],[PostfachLKZ],[BesonderePersonenGruppe],[DMPKennzeichnung],[VersicherungsschutzBeginn],[Kostentraegername],[KISFreigabe])" +
                     "VALUES(" + IDvalue + "," + IDvalue + ",2,0,'',1,0,'" + quarter + year + "','" + quarter + year + "','','" + anrede + "','','','" + bundleStructure.getPatient().getLastName() + "','" + bundleStructure.getPatient().getFirstName() + "',{d '" + bundleStructure.getPatient().getBirthDate() + "'},'D','" + bundleStructure.getPatient().getPostalCode() + "','" + bundleStructure.getPatient().getCity() + "','" + bundleStructure.getPatient().getStreet() + "','M','" + geschlecht + "',{d '1899-12-30'},{d '1899-12-30'},'101575519','TechnikerKra','1000',1,27,0,'',0,{d '1899-12-30'},0,0,0,0,0,0,1,1,{d '" + timestamp1 + "'},1,1,{ts '" + timestamp1 + " " + timestamp3 + "'},1,'','','','','',{d '1899-12-30'},{d '1899-12-30'},{d '1899-12-30'},{d '1899-12-30'},0,'','','',0,0,0,0,'',{d '1899-12-30'},{d '1899-12-30'},0,0,0,'','','',0,'','','','','','','','',0,0,0,'',0,{t '" + timestamp3 + "'},0,'','','',0,'','','{4C037011-B14E-4182-BC6D-D789DF966944}','','','','','','','',0,'',0,'--','" + bundleStructure.getPatient().getPostalCode() + "','','','','','','D','','',{d '1899-12-30'},'',0)\n" +
+//                  KrablLink table
+                    "INSERT [dbo].[KrablLink] ([PatientNummer],[Satzart],[Datum],[Kategorie],[Kurzinfo],[MandantGeändert],[UserGeändert],[ScheinNummer],[Hintergrundfarbe],[MandantAnlage],[Uhrzeitanlage],[DatumÄnderung],[DatumAnlage],[UserAnlage])" +
+                    "VALUES(" + IDvalue + ",1000,{d '" + timestamp1 + "'},'GKS','AS: Abrechnungsschein: Techniker Krankenkasse, " + quarter + "/" + year.substring(year.length()-2) + ", M, Chipkarte fehlt !',1,1," + IDvalue + ",0,1,{ts '1899-12-30 " + timestamp3 + "'},{ts '" + timestamp1 + " " + timestamp3 + "'},{d '" + timestamp1 + "'},1)\n" +
+//                  Tagprotokoll table
+                    "INSERT [dbo].[TagProtokoll] ([PatientNummer],[ScheinNummer],[Info],[Suchwort],[Datum],[LinkNummer],[Satzart],[Text],[Mandant],[Benutzer],[Uhrzeit])" +
+                    "VALUES(" + IDvalue + "," + IDvalue + ",'" + bundleStructure.getPatient().getLastName() + ", " + bundleStructure.getPatient().getFirstName() + " " + "(" + IDvalue + ")" + "','Anmeldung',{d '" + timestamp1 + "'},0,4000,'Neuer ASA: Techniker Krankenkasse; " + quarter + "/" + year.substring(year.length()-2) + "',1,1,{t '" + timestamp3 + "'})\n" +
+//                  Lock table
+                    "INSERT [dbo].[Lock] ([Tabellenname],[StationsNummer],[RecordNummer],[DatumAnlage],[UhrzeitAnlage])" +
+                    "VALUES('SCHEIN',1," + IDvalue + ",{d '" + timestamp1 + "'},{t '" + timestamp3 + "'})\n" +
                     "commit transaction";
 
         stmt.execute(SQL_create_new_patient);
