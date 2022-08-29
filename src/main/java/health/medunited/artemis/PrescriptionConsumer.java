@@ -70,11 +70,9 @@ public class PrescriptionConsumer implements Runnable {
     public void run() {
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
             Queue queue = context.createQueue("Prescriptions");
-            int IDValue = 0;
             while (true) {
                 try (JMSConsumer consumer = context.createConsumer(queue)) {
                     Message message = consumer.receive();
-                    IDValue += 1;
                     if (message == null) return;
                     if (message.propertyExists("receiverPublicKeyFingerprint") && message.propertyExists("practiceManagementTranslation")) {
                         String publicKey = message.getObjectProperty("receiverPublicKeyFingerprint").toString();
@@ -107,7 +105,7 @@ public class PrescriptionConsumer implements Runnable {
                             log.info("[ PHARMACY ]" + " name: " + pharmacy.getName() + " // street: " + pharmacy.getStreet() + " // house number: " + pharmacy.getHouseNumber() + " // city: " + pharmacy.getCity() + " // postal code: " + pharmacy.getPostalCode() + " // phone: " + pharmacy.getPhone() + " // email: " + pharmacy.getEmail() + "\n");
 
                             BundleStructure bundleStructure = new BundleStructure(practitioner, patient, medicationStatement, pharmacy);
-                            isynetMSQLConnector.insertToIsynet(bundleStructure, IDValue);
+                            isynetMSQLConnector.insertToIsynet(bundleStructure);
 
                         } else if (Objects.equals(message.getStringProperty("practiceManagementTranslation"), "t2med")) {
 
