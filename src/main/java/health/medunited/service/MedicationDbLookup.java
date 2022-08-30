@@ -1,6 +1,8 @@
 package health.medunited.service;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
@@ -12,6 +14,12 @@ public class MedicationDbLookup {
 
         try {
             File database = new File("/deployments/src/main/resources/medicationDatabase.csv");
+
+            try (BufferedReader br = new BufferedReader(new FileReader(database))) {
+                String text = br.readLine(); // first line only
+                System.out.println(text);
+            }
+
             Scanner scanner = new Scanner(database);
             scanner.useDelimiter("[\n]");
 
