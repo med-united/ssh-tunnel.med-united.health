@@ -1,8 +1,6 @@
 package health.medunited.service;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
@@ -13,20 +11,17 @@ public class MedicationDbLookup {
         boolean found = false;
 
         try {
-            File database = new File("/deployments/src/main/resources/medicationDatabase.csv");
+            MedicationDbLookup instance = new MedicationDbLookup();
+            InputStream is = instance.getFileAsIOStream("medicationDatabase.csv");
+            // instance.printFileContent(is);
 
-            try (BufferedReader br = new BufferedReader(new FileReader(database))) {
-                String text = br.readLine(); // first line only
-                System.out.println(text);
-            }
-
-            Scanner scanner = new Scanner(database);
+            Scanner scanner = new Scanner(is);
             scanner.useDelimiter("[\n]");
 
             while(scanner.hasNext() && !found) {
                 String[] myArray = scanner.next().split(",");
                 List<String> tableEntry = Arrays.asList(myArray);
-//                System.out.println(tableEntry);
+                // System.out.println(tableEntry);
                 String PZNFound = tableEntry.get(1);
 
                 if (PZNFound.equals(PZNtoLookup)) {
@@ -61,6 +56,31 @@ public class MedicationDbLookup {
 
     public static String getComposition(List<String> tableEntry) {
         return tableEntry.get(7);
+    }
+
+    public InputStream getFileAsIOStream(final String fileName)
+    {
+        InputStream ioStream = this.getClass()
+                .getClassLoader()
+                .getResourceAsStream(fileName);
+
+        if (ioStream == null) {
+            throw new IllegalArgumentException(fileName + " is not found");
+        }
+        return ioStream;
+    }
+
+    public void printFileContent(InputStream is) throws IOException
+    {
+        try (InputStreamReader isr = new InputStreamReader(is);
+             BufferedReader br = new BufferedReader(isr);)
+        {
+            String line;
+            while ((line = br.readLine()) != null) {
+                System.out.println(line);
+            }
+            is.close();
+        }
     }
 
 }
