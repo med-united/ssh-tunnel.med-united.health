@@ -7,13 +7,12 @@ import java.util.Scanner;
 
 public class MedicationDbLookup {
 
-    public static List<String> lookupMedicationByPZN(String PZNtoLookup) {
+    public static List<String> lookupMedicationByPZN(String pznToLookup) {
         boolean found = false;
 
         try {
             MedicationDbLookup instance = new MedicationDbLookup();
             InputStream is = instance.getFileAsIOStream("medicationDatabase.csv");
-            // instance.printFileContent(is);
 
             Scanner scanner = new Scanner(is);
             scanner.useDelimiter("[\n]");
@@ -22,9 +21,9 @@ public class MedicationDbLookup {
                 String[] myArray = scanner.next().split(",");
                 List<String> tableEntry = Arrays.asList(myArray);
                 // System.out.println(tableEntry);
-                String PZNFound = tableEntry.get(1);
+                String pznFound = tableEntry.get(1);
 
-                if (PZNFound.equals(PZNtoLookup)) {
+                if (pznFound.equals(pznToLookup)) {
                     return tableEntry;
                 }
             }
@@ -58,8 +57,7 @@ public class MedicationDbLookup {
         return tableEntry.get(7);
     }
 
-    public InputStream getFileAsIOStream(final String fileName)
-    {
+    public InputStream getFileAsIOStream(final String fileName) {
         InputStream ioStream = this.getClass()
                 .getClassLoader()
                 .getResourceAsStream(fileName);
@@ -69,18 +67,4 @@ public class MedicationDbLookup {
         }
         return ioStream;
     }
-
-    public void printFileContent(InputStream is) throws IOException
-    {
-        try (InputStreamReader isr = new InputStreamReader(is);
-             BufferedReader br = new BufferedReader(isr);)
-        {
-            String line;
-            while ((line = br.readLine()) != null) {
-                System.out.println(line);
-            }
-            is.close();
-        }
-    }
-
 }

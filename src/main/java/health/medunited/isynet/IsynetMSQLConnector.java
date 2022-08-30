@@ -1,6 +1,5 @@
 package health.medunited.isynet;
 
-import health.medunited.artemis.PrescriptionConsumer;
 import health.medunited.service.MedicationDbLookup;
 import health.medunited.model.*;
 
@@ -16,13 +15,13 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class IsynetMSQLConnector {
 
-    private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
+    private static final Logger log = Logger.getLogger(IsynetMSQLConnector.class.getName());
 
     public void insertToIsynet(BundleStructure bundleStructure) {
 
-        String PZNtoLookup = bundleStructure.getMedicationStatement().getPZN();
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(PZNtoLookup);
-        printMedicationInfo(PZNtoLookup, tableEntry);
+        String pznToLookup = bundleStructure.getMedicationStatement().getPZN();
+        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(pznToLookup);
+        printMedicationInfo(pznToLookup, tableEntry);
 
         try {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
@@ -32,8 +31,8 @@ public class IsynetMSQLConnector {
         String connectionUrl = "jdbc:sqlserver://lhtufukeqw3tayq1.myfritz.net:1433;databaseName=WINACS;user=AP31;password=722033800;trustServerCertificate=true";
         try (Connection con = DriverManager.getConnection(connectionUrl); Statement stmt = con.createStatement()) {
 
-            // deleteAllMedications(stmt);
-            // deleteAllPatients(stmt);
+             // deleteAllMedications(stmt);
+             // deleteAllPatients(stmt);
 
             int patientNumber = checkIfPatientExistsInTheSystem(bundleStructure, stmt);
 
@@ -51,8 +50,8 @@ public class IsynetMSQLConnector {
                 log.info("The medication corresponding to PZN " + bundleStructure.getMedicationStatement().getPZN() + " could not be found on the database, please insert it manually.");
             } else if (isPatientDateOfDeathKnown(patientNumber, stmt) || isPatientDeadButTheDateIsUnknown(patientNumber, stmt)) {
                 log.info("The medication was not created because the Patient is dead.");
-            } else {
-                log.info("The medication was not created because the Patient is dead or at the hospital.");
+            } else if (checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
+                log.info("The medication was not created because the Patient is at the hospital.");
             }
         }
         catch (SQLException e) {
@@ -60,10 +59,10 @@ public class IsynetMSQLConnector {
         }
     }
 
-    public void printMedicationInfo(String PZNtoLookup, List<String> tableEntry) {
+    public void printMedicationInfo(String pznToLookup, List<String> tableEntry) {
 
         if (tableEntry != null) {
-            log.info("[ MEDICATION OBTAINED FROM DB ] PZN: " + PZNtoLookup +
+            log.info("[ MEDICATION OBTAINED FROM DB ] PZN: " + pznToLookup +
                     " // name: " + MedicationDbLookup.getMedicationName(tableEntry) +
                     " // quantity: " + MedicationDbLookup.getQuantity(tableEntry) +
                     " // norm: " + MedicationDbLookup.getNorm(tableEntry) +
@@ -89,7 +88,7 @@ public class IsynetMSQLConnector {
 
         if (rs.next()) {
             int patientNumber = rs.getInt("Nummer");
-            log.info("Patient number in the Db: " + patientNumber);
+            log.info("Patient number in the db: " + patientNumber);
             return patientNumber;
         } else {
             return -1;
@@ -230,11 +229,9 @@ public class IsynetMSQLConnector {
         if (rs.next()) {
             String dateOfDeath = rs.getString("VerstorbenAm");
             if (!dateOfDeath.isEmpty() && !dateOfDeath.equals("1899-12-30 00:00:00.0")) {
-                log.info("This Patient is dead.");
                 return true;
             }
         }
-        log.info("This Patient is alive.");
         return false;
     }
 
@@ -245,11 +242,9 @@ public class IsynetMSQLConnector {
         if (rs.next()) {
             boolean isDateOfDeathUnknown = rs.getBoolean("RipDatumUnbekannt");
             if (isDateOfDeathUnknown) {
-                log.info("This Patient is dead.");
                 return true;
             }
         }
-        log.info("This Patient is alive.");
         return false;
     }
 
@@ -263,17 +258,15 @@ public class IsynetMSQLConnector {
         if (rs.next()) {
             String info = rs.getString("Kurzinfo");
             if (info.toLowerCase().replaceAll("\\s"," ").contains("im kh")) {
-                log.info("This Patient is at the Hospital.");
                 return true;
             }
         }
-        log.info("This Patient is not at the Hospital.");
         return false;
     }
 
     public void createMedication(List<String> tableEntry, int patientNummer, BundleStructure bundleStructure, Statement stmt) throws SQLException {
 
-        log.info("Attempting to create medication.");
+        log.info("Attempting to create medication...");
         String[] dosage = bundleStructure.getMedicationStatement().getDosage().split("-");
         String morgens = dosage[0];
         String mittags = dosage[1];
@@ -283,8 +276,8 @@ public class IsynetMSQLConnector {
         DateTimeFormatter dtf1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS");
         DateTimeFormatter dtf2 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
         LocalDateTime now = LocalDateTime.now();
-        String timestamp1 = dtf1.format(now).replace(" ","T");
-        String timestamp2 = dtf2.format(now).replace(" ","T");
+        String timestamp1 = dtf1.format(now).replace(" ", "T");
+        String timestamp2 = dtf2.format(now).replace(" ", "T");
 
         int medikamentId = getMaxIDFromTableAndColumn("VerordnungsmodulMedikamentDbo", "Id", stmt);
         int verordnungsmodulRezepturWirkstoffId = getMaxIDFromTableAndColumn("VerordnungsmodulRezepturWirkstoffDbo", "Id", stmt);
@@ -297,168 +290,170 @@ public class IsynetMSQLConnector {
         int dosierungId = getMaxIDFromTableAndColumn("VerordnungsmodulDosierungDbo", "ID", stmt);
 
         String SQL_insertMedication = "" +
-            "SET XACT_ABORT ON\n" + // in case of an error, rollback will be issued automatically
-            "BEGIN TRANSACTION\n" +
-            // VerordnungsmodulMedikamentDbo table (Prescription module medication table) ---------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] ON\n" +
-            "INSERT [dbo].[VerordnungsmodulMedikamentDbo] ([Id], [Pzn], [HandelsnameOderFreitext], [Hersteller], [AtcCodes], " +
-                                                          "[AtcCodeBedeutungen], [Darreichungsform], [DarreichungsformAsFreitext], " +
-                                                          "[PackungsgroesseText], [PackungsgroesseWert], [PackungsgroesseEinheit], " +
-                                                          "[PackungsgroesseEinheitCode], [Normgroesse], [Preis_IsSet], " +
-                                                          "[Preis_ApothekenVerkaufspreisCent], [Preis_FestbetragCent], " +
-                                                          "[Preis_MehrkostenCent], [Preis_ZuzahlungCent], [Preis_GesamtzuzahlungCent], " +
-                                                          "[Typ], [Farbe], [IsPriscus], [Created], [DatasetCreated], [UserCreated], " +
-                                                          "[LastChanged], [DatasetLastChanged], [UserLastChanged], [IsArchiviert], " +
-                                                          "[Hilfsmittelpositionsnummer])" +
-            "VALUES (" + medikamentId + ", " + bundleStructure.getMedicationStatement().getPZN() + ", N'" +
-                     MedicationDbLookup.getMedicationName(tableEntry) + "', N'', N'" + MedicationDbLookup.getATC(tableEntry) +
-                     "', N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'', N'', N'', N'', N'', N'', 1, 1, 1665, NULL," +
-                     " NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1'," +
-                     "CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] OFF\n" +
+                "SET XACT_ABORT ON\n" + // in case of an error, rollback will be issued automatically
+                "BEGIN TRANSACTION\n" +
+                // VerordnungsmodulMedikamentDbo table (Prescription module medication table) ---------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] ON\n" +
+                "INSERT [dbo].[VerordnungsmodulMedikamentDbo] ([Id], [Pzn], [HandelsnameOderFreitext], [Hersteller], [AtcCodes], " +
+                "[AtcCodeBedeutungen], [Darreichungsform], [DarreichungsformAsFreitext], " +
+                "[PackungsgroesseText], [PackungsgroesseWert], [PackungsgroesseEinheit], " +
+                "[PackungsgroesseEinheitCode], [Normgroesse], [Preis_IsSet], " +
+                "[Preis_ApothekenVerkaufspreisCent], [Preis_FestbetragCent], " +
+                "[Preis_MehrkostenCent], [Preis_ZuzahlungCent], [Preis_GesamtzuzahlungCent], " +
+                "[Typ], [Farbe], [IsPriscus], [Created], [DatasetCreated], [UserCreated], " +
+                "[LastChanged], [DatasetLastChanged], [UserLastChanged], [IsArchiviert], " +
+                "[Hilfsmittelpositionsnummer])" +
+                "VALUES (" + medikamentId + ", " + bundleStructure.getMedicationStatement().getPZN() + ", N'" +
+                MedicationDbLookup.getMedicationName(tableEntry) + "', N'', N'" + MedicationDbLookup.getATC(tableEntry) +
+                "', N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'', N'', N'', N'', N'', N'', 1, 1, 1665, NULL," +
+                " NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1'," +
+                "CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] OFF\n" +
 
-            // VerordnungsmodulRezepturWirkstoffDbo table (Prescription module active ingredient table) -------------------------------
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ON\n" +
-            "INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ([Id], [AtcCode], [AtcCodeBedeutung], [Freitext], " +
-                                                                 "[WirkstaerkeWert], [WirkstaerkeEinheit], [WirkstaerkeEinheitCode], " +
-                                                                 "[ProduktmengeWert], [ProduktmengeEinheit], [ProduktmengeEinheitCode], " +
-                                                                 "[MedikamentDbo_Id])" +
-            "VALUES (" + verordnungsmodulRezepturWirkstoffId + ", NULL, NULL, N'" + MedicationDbLookup.getComposition(tableEntry) +
-                     "', N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'AuTro', N'1', " + medikamentId + ")\n" +
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] OFF\n" +
+                // VerordnungsmodulRezepturWirkstoffDbo table (Prescription module active ingredient table) -------------------------------
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ON\n" +
+                "INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ([Id], [AtcCode], [AtcCodeBedeutung], [Freitext], " +
+                "[WirkstaerkeWert], [WirkstaerkeEinheit], [WirkstaerkeEinheitCode], " +
+                "[ProduktmengeWert], [ProduktmengeEinheit], [ProduktmengeEinheitCode], " +
+                "[MedikamentDbo_Id])" +
+                "VALUES (" + verordnungsmodulRezepturWirkstoffId + ", NULL, NULL, N'" + MedicationDbLookup.getComposition(tableEntry) +
+                "', N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'AuTro', N'1', " + medikamentId + ")\n" +
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] OFF\n" +
 
-            // VerordnungsmodulRezeptDbo table (Prescription module recipe table) -----------------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] ON\n" +
-            "INSERT [dbo].[VerordnungsmodulRezeptDbo] ([Id], [RezeptGruppierung], [OnRezeptWeight], [MedikamentId], [PatientId], " +
-                                                      "[Ausstellungsdatum], [Erstellungsdatum], [BehandlerId], [KostentraegerId], " +
-                                                      "[BetriebsstaetteId], [AnzahlWert], [AnzahlEinheit], [AnzahlEinheitCode], " +
-                                                      "[RezeptZusatzinfos_IsSet], [RezeptZusatzinfos_Gebuehrenfrei], " +
-                                                      "[RezeptZusatzinfos_Unfall], [RezeptZusatzinfos_Arbeitsunfall], " +
-                                                      "[RezeptZusatzinfos_Noctu], [RezeptTyp], [KennzeichenStatus], [MPKennzeichen], " +
-                                                      "[AutIdem], [RezeptZeile], [VerordnungsStatus], [BtmSonderkennzeichen], " +
-                                                      "[TRezeptZusatzinfos_IsSet], [TRezeptZusatzinfos_SicherheitsbestimmungenEingehalten], " +
-                                                      "[TRezeptZusatzinfos_InformationfsmaterialAusgegeben], [TRezeptZusatzinfos_InOffLabel], " +
-                                                      "[HilfsmittelRezeptZusatzinfos_IsSet], [HilfsmittelRezeptZusatzinfos_ProduktnummerPrintType], " +
-                                                      "[HilfsmittelRezeptZusatzinfos_DiagnoseText], [HilfsmittelRezeptZusatzinfos_Zeitraum], " +
-                                                      "[AdditionalText], [Annotation], [ReasonForTreatment], [HasToApplyAdditionalTextToRezept], " +
-                                                      "[HasToApplyAnnotationTextToRezept], [IsHilfsmittelRezept], [IsImpfstoffRezept], " +
-                                                      "[VertragsZusatzinfos_ZusatzhinweisHzvGruen], [VertragsZusatzinfos_BvgKennzeichen], " +
-                                                      "[VertragsZusatzinfos_Begruendungspflicht], [VertragsZusatzinfos_StellvertreterMitgliedsNr], " +
-                                                      "[VertragsZusatzinfos_StellvertreterMediId], [VertragsZusatzinfos_StellvetreterLanr], " +
-                                                      "[Created], [DatasetCreated], [UserCreated], [LastChanged], [DatasetLastChanged], " +
-                                                      "[UserLastChanged], [IsArchiviert], [AsvTeamNummer], [StempelId], " +
-                                                      "[DosierungsPflichtAuswahl], [IsKuenstlicheBefruchtung], [VertragsZusatzinfos_IsSet], " +
-                                                      "[VertragsZusatzinfos_Wirkstoffzeile], [VertragsZusatzinfos_IsWirkstoffzeileActivated], " +
-                                                      "[IsErezept], [AbgabehinweisApotheke])" +
-            "VALUES (" + rezeptId + ", N'', 0, " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), " +
-                     "CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'2', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" +
-                     MedicationDbLookup.getMedicationName(tableEntry) + "\n" + "PZN" + bundleStructure.getMedicationStatement().getPZN() +
-                     " »" + bundleStructure.getMedicationStatement().getDosage() + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, " +
-                     "NULL, NULL, 1, 1, 0, 0, NULL, 0, 0, NULL, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', " +
-                     "N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL, N'101', 3, 0, 0, NULL, 0, " +
-                     "1, NULL)\n" +
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] OFF\n" +
+                // VerordnungsmodulRezeptDbo table (Prescription module recipe table) -----------------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] ON\n" +
+                "INSERT [dbo].[VerordnungsmodulRezeptDbo] ([Id], [RezeptGruppierung], [OnRezeptWeight], [MedikamentId], [PatientId], " +
+                "[Ausstellungsdatum], [Erstellungsdatum], [BehandlerId], [KostentraegerId], " +
+                "[BetriebsstaetteId], [AnzahlWert], [AnzahlEinheit], [AnzahlEinheitCode], " +
+                "[RezeptZusatzinfos_IsSet], [RezeptZusatzinfos_Gebuehrenfrei], " +
+                "[RezeptZusatzinfos_Unfall], [RezeptZusatzinfos_Arbeitsunfall], " +
+                "[RezeptZusatzinfos_Noctu], [RezeptTyp], [KennzeichenStatus], [MPKennzeichen], " +
+                "[AutIdem], [RezeptZeile], [VerordnungsStatus], [BtmSonderkennzeichen], " +
+                "[TRezeptZusatzinfos_IsSet], [TRezeptZusatzinfos_SicherheitsbestimmungenEingehalten], " +
+                "[TRezeptZusatzinfos_InformationfsmaterialAusgegeben], [TRezeptZusatzinfos_InOffLabel], " +
+                "[HilfsmittelRezeptZusatzinfos_IsSet], [HilfsmittelRezeptZusatzinfos_ProduktnummerPrintType], " +
+                "[HilfsmittelRezeptZusatzinfos_DiagnoseText], [HilfsmittelRezeptZusatzinfos_Zeitraum], " +
+                "[AdditionalText], [Annotation], [ReasonForTreatment], [HasToApplyAdditionalTextToRezept], " +
+                "[HasToApplyAnnotationTextToRezept], [IsHilfsmittelRezept], [IsImpfstoffRezept], " +
+                "[VertragsZusatzinfos_ZusatzhinweisHzvGruen], [VertragsZusatzinfos_BvgKennzeichen], " +
+                "[VertragsZusatzinfos_Begruendungspflicht], [VertragsZusatzinfos_StellvertreterMitgliedsNr], " +
+                "[VertragsZusatzinfos_StellvertreterMediId], [VertragsZusatzinfos_StellvetreterLanr], " +
+                "[Created], [DatasetCreated], [UserCreated], [LastChanged], [DatasetLastChanged], " +
+                "[UserLastChanged], [IsArchiviert], [AsvTeamNummer], [StempelId], " +
+                "[DosierungsPflichtAuswahl], [IsKuenstlicheBefruchtung], [VertragsZusatzinfos_IsSet], " +
+                "[VertragsZusatzinfos_Wirkstoffzeile], [VertragsZusatzinfos_IsWirkstoffzeileActivated], " +
+                "[IsErezept], [AbgabehinweisApotheke])" +
+                "VALUES (" + rezeptId + ", N'', 0, " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), " +
+                "CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'2', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" +
+                MedicationDbLookup.getMedicationName(tableEntry) + "\n" + "PZN" + bundleStructure.getMedicationStatement().getPZN() +
+                " »" + bundleStructure.getMedicationStatement().getDosage() + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, " +
+                "NULL, NULL, 1, 1, 0, 0, NULL, 0, 0, NULL, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', " +
+                "N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL, N'101', 3, 0, 0, NULL, 0, " +
+                "1, NULL)\n" +
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] OFF\n" +
 
-            // VerordnungsmodulMedikationDbo table (Prescription module medication table) ---------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikationDbo] ON\n" +
-            "INSERT [dbo].[VerordnungsmodulMedikationDbo] ([Id], [RezeptId], [MedikamentId], [PatientId], [DatumVerordnet], " +
-                                                          "[IsDauermedikation], [MpKennzeichen], [DatumAbgesetzt], [GrundAbgesetzt], " +
-                                                          "[Created], [DatasetCreated], [UserCreated], [LastChanged], " +
-                                                          "[DatasetLastChanged], [UserLastChanged], [IsArchiviert])" +
-            "VALUES (" + medikationId + "," + rezeptId + ", " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 +
-                     "' AS DateTime2), 0, 0, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', " +
-                     "CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0)\n" +
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikationDbo] OFF\n" +
+                // VerordnungsmodulMedikationDbo table (Prescription module medication table) ---------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikationDbo] ON\n" +
+                "INSERT [dbo].[VerordnungsmodulMedikationDbo] ([Id], [RezeptId], [MedikamentId], [PatientId], [DatumVerordnet], " +
+                "[IsDauermedikation], [MpKennzeichen], [DatumAbgesetzt], [GrundAbgesetzt], " +
+                "[Created], [DatasetCreated], [UserCreated], [LastChanged], " +
+                "[DatasetLastChanged], [UserLastChanged], [IsArchiviert])" +
+                "VALUES (" + medikationId + "," + rezeptId + ", " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 +
+                "' AS DateTime2), 0, 0, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', " +
+                "CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0)\n" +
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikationDbo] OFF\n" +
 
-            // ScheinMed table -------------------------------------------------------------------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[ScheinMed] ON\n" +
-            "INSERT [dbo].[ScheinMed] ([Nummer], [ScheinNummer], [PatientNummer], [Suchwort], [PZN], [Verordnungstyp], " +
-                                      "[Betragsspeicher], [AVP], [Festbetrag], [Bruttobetrag], [Nettobetrag], [Diagnose], " +
-                                      "[ICD], [AutIdem], [Grenzpreis], [MandantGeändert], [UserGeändert], [DatumÄnderung], " +
-                                      "[UnteresPreisdrittel], [KrablLinkNrRezept], [BTMGebühr], [DDDPackung], [Übertragen], " +
-                                      "[FarbKategorie], [Merkmal], [KrablLinkNr])" +
-            "VALUES (" + scheinMedNummer + ", " + getPatientScheinNummer(patientNummer, stmt) + "," + patientNummer + ", N'" +
-                     bundleStructure.getMedicationStatement().getPZN() + "', N'" + bundleStructure.getMedicationStatement().getPZN() +
-                     "', N'LM', 100, " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, " + MedicationDbLookup.getAVP(tableEntry) +
-                     ", 11.6500, N'', N'', 1, 0.0000, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0.0000, 0, 0, N'', N''," +
-                     krablLinkNummer + ")\n" +
-            "SET IDENTITY_INSERT [dbo].[ScheinMed] OFF\n" +
+                // ScheinMed table -------------------------------------------------------------------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[ScheinMed] ON\n" +
+                "INSERT [dbo].[ScheinMed] ([Nummer], [ScheinNummer], [PatientNummer], [Suchwort], [PZN], [Verordnungstyp], " +
+                "[Betragsspeicher], [AVP], [Festbetrag], [Bruttobetrag], [Nettobetrag], [Diagnose], " +
+                "[ICD], [AutIdem], [Grenzpreis], [MandantGeändert], [UserGeändert], [DatumÄnderung], " +
+                "[UnteresPreisdrittel], [KrablLinkNrRezept], [BTMGebühr], [DDDPackung], [Übertragen], " +
+                "[FarbKategorie], [Merkmal], [KrablLinkNr])" +
+                "VALUES (" + scheinMedNummer + ", " + getPatientScheinNummer(patientNummer, stmt) + "," + patientNummer + ", N'" +
+                bundleStructure.getMedicationStatement().getPZN() + "', N'" + bundleStructure.getMedicationStatement().getPZN() +
+                "', N'LM', 100, " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, " + MedicationDbLookup.getAVP(tableEntry) +
+                ", 11.6500, N'', N'', 1, 0.0000, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0.0000, 0, 0, N'', N''," +
+                krablLinkNummer + ")\n" +
+                "SET IDENTITY_INSERT [dbo].[ScheinMed] OFF\n" +
 
-            // KrablLink table ------------------------------------------------------------------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[KrablLink] ON\n" +
-            "INSERT [dbo].[KrablLink] ([Nummer], [PatientNummer], [Satzart], [Datum], [Kategorie], [Kurzinfo], [Passwort], " +
-                                      "[MandantGeändert], [UserGeändert], [DatumÄnderung], [ScheinNummer], [GruppenNummer], " +
-                                      "[Hintergrundfarbe], [Detail], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantFremd], " +
-                                      "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
-            "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " +
-                     bundleStructure.getMedicationStatement().getDosage() + ", PZN: " + bundleStructure.getMedicationStatement().getPZN() +
-                     ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0," +
-                     " N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
-            "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
+                // KrablLink table ------------------------------------------------------------------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[KrablLink] ON\n" +
+                "INSERT [dbo].[KrablLink] ([Nummer], [PatientNummer], [Satzart], [Datum], [Kategorie], [Kurzinfo], [Passwort], " +
+                "[MandantGeändert], [UserGeändert], [DatumÄnderung], [ScheinNummer], [GruppenNummer], " +
+                "[Hintergrundfarbe], [Detail], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantFremd], " +
+                "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
+                "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " +
+                bundleStructure.getMedicationStatement().getDosage() + ", PZN: " + bundleStructure.getMedicationStatement().getPZN() +
+                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0," +
+                " N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
+                "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
 
-            // KrablLinkID table ---------------------------------------------------------------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[KrablLinkID] ON\n" +
-            "INSERT [dbo].[KrablLinkID] ([Nummer], [PatientNummer], [KrablLinkNummer], [IDType], [ID], [MandantAnlage], [UserAnlage]," +
-                                        "[DatumAnlage], [MandantGeändert], [UserGeändert], [DatumÄnderung], [Fremdsystem], " +
-                                        "[Erzeugersystem], [Status], [Bemerkung])" +
-            "VALUES (" + krablLinkIDNummer + ", " + patientNummer + "," + krablLinkNummer + ", 7, " + krablLinkIDNummer + ", 1, 1, " +
-                     "CAST(N'" + timestamp2 + "' AS DateTime), 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 1, 1, 0, " +
-                     "N'f4835bad-c18b-4653-b706-89b6f5b06772')\n" +
-            "SET IDENTITY_INSERT [dbo].[KrablLinkID] OFF\n" +
+                // KrablLinkID table ---------------------------------------------------------------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[KrablLinkID] ON\n" +
+                "INSERT [dbo].[KrablLinkID] ([Nummer], [PatientNummer], [KrablLinkNummer], [IDType], [ID], [MandantAnlage], [UserAnlage]," +
+                "[DatumAnlage], [MandantGeändert], [UserGeändert], [DatumÄnderung], [Fremdsystem], " +
+                "[Erzeugersystem], [Status], [Bemerkung])" +
+                "VALUES (" + krablLinkIDNummer + ", " + patientNummer + "," + krablLinkNummer + ", 7, " + krablLinkIDNummer + ", 1, 1, " +
+                "CAST(N'" + timestamp2 + "' AS DateTime), 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 1, 1, 0, " +
+                "N'f4835bad-c18b-4653-b706-89b6f5b06772')\n" +
+                "SET IDENTITY_INSERT [dbo].[KrablLinkID] OFF\n" +
 
-            // ScheinMedDaten ------------------------------------------------------------------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] ON\n" +
-            "INSERT [dbo].[ScheinMedDaten] ([Nummer], [Suchwort], [Klasse], [Typ], [Langtext], [Packungsart], [NNummer], " +
-                                           "[Darreichungsform], [Packungsgröße], [PZNummer], [StandardDosierung], [Betrag], " +
-                                           "[Festbetrag], [Grenzpreis], [Anatomieklasse], [Hersteller], [Wirkstoff], [Generika], " +
-                                           "[NurPrivatrezept], [BTMPräparat], [Bevorzugt], [Geschützt], [AußerHandel], [Negativliste], " +
-                                           "[Rückruf], [Datenanbieter], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantGeändert], " +
-                                           "[UserGeändert], [DatumÄnderung], [UnteresPreisdrittel], [OTC], [Zuzahlungsbefreit], " +
-                                           "[WirkstoffMenge], [WirkstoffMengenEinheit], [LetzterPreis], [PreisÄnderung], [LifeStyle], " +
-                                           "[ApothekenPflicht], [VerschreibungsPflicht], [Reimport], [AlternativeVorhanden], [ZweitMeinung], " +
-                                           "[PNH], [PNHBezeichnung], [DDDKosten], [OTX], [TRezept], [KombiPraeparat], [AutIdemKennung], " +
-                                           "[PriscusListe], [NeueinfuehrungsDatum], [HerstellerID], [ErstattungsBetrag], " +
-                                           "[DokuPflichtTransfusion], [VOEinschraenkungAnlage3], [Therapiehinweis], [MedizinProdukt], " +
-                                           "[MPVerordnungsfaehig], [MPVOBefristung], [Verordnet], [MitReimport], [WSTZeile], [WSTNummer], " +
-                                           "[IMMVorhanden], [Sortierung], [ATCLangtext], [ErstattungStattAbschlag], [VertragspreisNach129_5]," +
-                                           "[NormGesamtzuzahlung], [Verordnungseinschraenkung], [Verordnungsausschluss], [VOAusschlussAnlage3])" +
-            "VALUES (" + scheinMedDatenNummer + ", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', 1, N'" +
-                     MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + bundleStructure.getMedicationStatement().getPZN() +
-                     "', N'', " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, 0.0000, N'S01AE01', N'Pharma Gerke Arzneimittelvertriebs GmbH', " +
-                     "N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
-                     "1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, " +
-                     "0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), " +
-                     "0, 0, N'', N'', 0, N'', N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0.0000, 0, 0, 0)\n" +
-            "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] OFF\n" +
+                // ScheinMedDaten ------------------------------------------------------------------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] ON\n" +
+                "INSERT [dbo].[ScheinMedDaten] ([Nummer], [Suchwort], [Klasse], [Typ], [Langtext], [Packungsart], [NNummer], " +
+                "[Darreichungsform], [Packungsgröße], [PZNummer], [StandardDosierung], [Betrag], " +
+                "[Festbetrag], [Grenzpreis], [Anatomieklasse], [Hersteller], [Wirkstoff], [Generika], " +
+                "[NurPrivatrezept], [BTMPräparat], [Bevorzugt], [Geschützt], [AußerHandel], [Negativliste], " +
+                "[Rückruf], [Datenanbieter], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantGeändert], " +
+                "[UserGeändert], [DatumÄnderung], [UnteresPreisdrittel], [OTC], [Zuzahlungsbefreit], " +
+                "[WirkstoffMenge], [WirkstoffMengenEinheit], [LetzterPreis], [PreisÄnderung], [LifeStyle], " +
+                "[ApothekenPflicht], [VerschreibungsPflicht], [Reimport], [AlternativeVorhanden], [ZweitMeinung], " +
+                "[PNH], [PNHBezeichnung], [DDDKosten], [OTX], [TRezept], [KombiPraeparat], [AutIdemKennung], " +
+                "[PriscusListe], [NeueinfuehrungsDatum], [HerstellerID], [ErstattungsBetrag], " +
+                "[DokuPflichtTransfusion], [VOEinschraenkungAnlage3], [Therapiehinweis], [MedizinProdukt], " +
+                "[MPVerordnungsfaehig], [MPVOBefristung], [Verordnet], [MitReimport], [WSTZeile], [WSTNummer], " +
+                "[IMMVorhanden], [Sortierung], [ATCLangtext], [ErstattungStattAbschlag], [VertragspreisNach129_5]," +
+                "[NormGesamtzuzahlung], [Verordnungseinschraenkung], [Verordnungsausschluss], [VOAusschlussAnlage3])" +
+                "VALUES (" + scheinMedDatenNummer + ", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', 1, N'" +
+                MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + bundleStructure.getMedicationStatement().getPZN() +
+                "', N'', " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, 0.0000, N'S01AE01', N'Pharma Gerke Arzneimittelvertriebs GmbH', " +
+                "N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
+                "1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, " +
+                "0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), " +
+                "0, 0, N'', N'', 0, N'', N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0.0000, 0, 0, 0)\n" +
+                "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] OFF\n" +
 
-            // VerordnungsmodulDosierungDbo table ----------------------------------------------------------------------------------
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulDosierungDbo] ON\n" +
-            "INSERT [dbo].[VerordnungsmodulDosierungDbo] ([ID], [Morgens], [Mittags], [Abends], [Nachts], [DosierungsFreitext], " +
-                                                         "[StartOfTaking], [EndOfTaking], [Status], [DosierEinheit], " +
-                                                         "[DosierEinheitCode], [RezeptDbo_Id], [MedikationDbo_Id])" +
-            "VALUES (" + dosierungId + "," + morgens + "," + mittags + "," + abends + "," + nachts + ", NULL, NULL, NULL, 1, 1, " +
-                     "1," + rezeptId + "," + medikationId + ")\n" +
-            "SET IDENTITY_INSERT [dbo].[VerordnungsmodulDosierungDbo] OFF\n" +
-            "COMMIT TRANSACTION";
+                // VerordnungsmodulDosierungDbo table ----------------------------------------------------------------------------------
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulDosierungDbo] ON\n" +
+                "INSERT [dbo].[VerordnungsmodulDosierungDbo] ([ID], [Morgens], [Mittags], [Abends], [Nachts], [DosierungsFreitext], " +
+                "[StartOfTaking], [EndOfTaking], [Status], [DosierEinheit], " +
+                "[DosierEinheitCode], [RezeptDbo_Id], [MedikationDbo_Id])" +
+                "VALUES (" + dosierungId + "," + morgens + "," + mittags + "," + abends + "," + nachts + ", NULL, NULL, NULL, 1, 1, " +
+                "1," + rezeptId + "," + medikationId + ")\n" +
+                "SET IDENTITY_INSERT [dbo].[VerordnungsmodulDosierungDbo] OFF\n" +
+                "COMMIT TRANSACTION";
 
         stmt.execute(SQL_insertMedication);
 
-        String SQL_getContentOfVerordnungsmodulMedikamentDboTable = "SELECT * FROM VerordnungsmodulMedikamentDbo\n";
+        String SQL_getPatientMedication = "SELECT * FROM VerordnungsmodulMedikamentDbo A INNER JOIN VerordnungsmodulMedikationDbo B ON B.MedikamentId = A.Id WHERE PatientId = '" + patientNummer + "'; \n";
 
-        ResultSet rs = stmt.executeQuery(SQL_getContentOfVerordnungsmodulMedikamentDboTable);
+        ResultSet rs = stmt.executeQuery(SQL_getPatientMedication);
         ResultSetMetaData rsmd = rs.getMetaData();
         int columnsNumber = rsmd.getColumnCount();
 
-        log.info("Medications currently inside the VerordnungsmodulMedikamentDbo table:");
+        log.info("Medications currently on the system for this Patient:");
+        StringBuilder medicationOfPatient = new StringBuilder();
         while (rs.next()) {
-            StringBuilder result = new StringBuilder();
+            medicationOfPatient.append("\n");
             for (int i = 1; i <= columnsNumber; i++) {
-                if (i > 1) result.append(",  ");
-                result.append(rs.getString(i));
-                result.append(" (").append(rsmd.getColumnName(i)).append(")");
+                if ((i <= 3) || (i == 5) || (i == 6)) {
+                    medicationOfPatient.append(rs.getString(i)).append(" (").append(rsmd.getColumnName(i)).append(")  ");
+                }
             }
-            log.info(result.toString());
         }
+        String medicationsOfPatient = String.valueOf(medicationOfPatient);
+        log.info(medicationsOfPatient);
     }
 
     public int getMaxIDFromTableAndColumn(String table, String column, Statement stmt) throws SQLException {
@@ -469,7 +464,7 @@ public class IsynetMSQLConnector {
         ResultSet rs = stmt.executeQuery(SQL_getMaxId);
         if (rs.next()) {
             int id = rs.getInt(column);
-            log.info("Id value for " + column + " = " + id);
+            // log.info("Id value for " + column + " = " + id);
             return id + 1;
         }
         return 1;
@@ -481,7 +476,7 @@ public class IsynetMSQLConnector {
         ResultSet rs = stmt.executeQuery(SQL_getScheinNummer);
         if (rs.next()) {
             int scheinNummer = rs.getInt("Nummer");
-            log.info("Scheinnummer = " + scheinNummer);
+            // log.info("Scheinnummer = " + scheinNummer);
             return scheinNummer;
         }
         return -1;
@@ -489,35 +484,35 @@ public class IsynetMSQLConnector {
 
     public void deleteAllMedications(Statement stmt) throws SQLException {
 
-        String SQL_delete_VerordnungsmodulMedikamentDbo = "DELETE FROM VerordnungsmodulMedikamentDbo WHERE Id >= 0";
-        String SQL_delete_VerordnungsmodulRezepturWirkstoffDbo = "DELETE FROM VerordnungsmodulRezepturWirkstoffDbo WHERE Id >= 0";
-        String SQL_delete_VerordnungsmodulMedikationDbo = "DELETE FROM VerordnungsmodulMedikationDbo WHERE Id >= 0";
-        String SQL_delete_VerordnungsmodulRezeptDbo = "DELETE FROM VerordnungsmodulRezeptDbo WHERE Id >= 0";
-        String SQL_delete_VerordnungsmodulDosierungDbo = "DELETE FROM VerordnungsmodulDosierungDbo WHERE Id >= 0";
-        String SQL_delete_ScheinMed = "DELETE FROM ScheinMed WHERE Nummer >= 0";
-        String SQL_delete_KrablLinkID = "DELETE FROM KrablLinkID WHERE Nummer >= 0";
-        String SQL_delete_ScheinMedDaten = "DELETE FROM ScheinMedDaten WHERE Nummer >= 0";
-        stmt.execute(SQL_delete_ScheinMedDaten);
-        stmt.execute(SQL_delete_KrablLinkID);
-        stmt.execute(SQL_delete_ScheinMed);
-        stmt.execute(SQL_delete_VerordnungsmodulDosierungDbo);
-        stmt.execute(SQL_delete_VerordnungsmodulMedikationDbo);
-        stmt.execute(SQL_delete_VerordnungsmodulRezeptDbo);
-        stmt.execute(SQL_delete_VerordnungsmodulRezepturWirkstoffDbo);
-        stmt.execute(SQL_delete_VerordnungsmodulMedikamentDbo);
+        String SQL_deleteVerordnungsmodulMedikamentDbo = "DELETE FROM VerordnungsmodulMedikamentDbo WHERE Id >= 0";
+        String SQL_deleteVerordnungsmodulRezepturWirkstoffDbo = "DELETE FROM VerordnungsmodulRezepturWirkstoffDbo WHERE Id >= 0";
+        String SQL_deleteVerordnungsmodulMedikationDbo = "DELETE FROM VerordnungsmodulMedikationDbo WHERE Id >= 0";
+        String SQL_deleteVerordnungsmodulRezeptDbo = "DELETE FROM VerordnungsmodulRezeptDbo WHERE Id >= 0";
+        String SQL_deleteVerordnungsmodulDosierungDbo = "DELETE FROM VerordnungsmodulDosierungDbo WHERE Id >= 0";
+        String SQL_deleteScheinMed = "DELETE FROM ScheinMed WHERE Nummer >= 0";
+        String SQL_deleteKrablLinkID = "DELETE FROM KrablLinkID WHERE Nummer >= 0";
+        String SQL_deleteScheinMedDaten = "DELETE FROM ScheinMedDaten WHERE Nummer >= 0";
+        stmt.execute(SQL_deleteScheinMedDaten);
+        stmt.execute(SQL_deleteKrablLinkID);
+        stmt.execute(SQL_deleteScheinMed);
+        stmt.execute(SQL_deleteVerordnungsmodulDosierungDbo);
+        stmt.execute(SQL_deleteVerordnungsmodulMedikationDbo);
+        stmt.execute(SQL_deleteVerordnungsmodulRezeptDbo);
+        stmt.execute(SQL_deleteVerordnungsmodulRezepturWirkstoffDbo);
+        stmt.execute(SQL_deleteVerordnungsmodulMedikamentDbo);
     }
 
     public void deleteAllPatients(Statement stmt) throws SQLException {
 
-        String SQL_delete_Patient = "DELETE FROM Patient WHERE Nummer >= 0";
-        String SQL_delete_TagProtokoll = "DELETE FROM TagProtokoll WHERE PatientNummer >= 0";
-        String SQL_delete_KrablLink = "DELETE FROM KrablLink WHERE PatientNummer >= 0";
-        String SQL_delete_Schein = "DELETE FROM Schein WHERE Nummer >= 0";
-        String SQL_delete_Lock = "DELETE FROM Lock WHERE RecordNummer >= 0";
-        stmt.execute(SQL_delete_Patient);
-        stmt.execute(SQL_delete_TagProtokoll);
-        stmt.execute(SQL_delete_KrablLink);
-        stmt.execute(SQL_delete_Schein);
-        stmt.execute(SQL_delete_Lock);
+        String SQL_deletePatient = "DELETE FROM Patient WHERE Nummer >= 0";
+        String SQL_deleteTagProtokoll = "DELETE FROM TagProtokoll WHERE PatientNummer >= 0";
+        String SQL_deleteKrablLink = "DELETE FROM KrablLink WHERE PatientNummer >= 0";
+        String SQL_deleteSchein = "DELETE FROM Schein WHERE Nummer >= 0";
+        String SQL_deleteLock = "DELETE FROM Lock WHERE RecordNummer >= 0";
+        stmt.execute(SQL_deletePatient);
+        stmt.execute(SQL_deleteTagProtokoll);
+        stmt.execute(SQL_deleteKrablLink);
+        stmt.execute(SQL_deleteSchein);
+        stmt.execute(SQL_deleteLock);
     }
 }
