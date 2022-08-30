@@ -11,7 +11,7 @@ public class MedicationDbLookup {
         boolean found = false;
 
         try {
-            File database = new File("src/main/resources/medicationDatabase.csv");
+            File database = new File("/deployments/src/main/resources/medicationDatabase.csv");
             Scanner scanner = new Scanner(database);
             scanner.useDelimiter("[\n]");
 
