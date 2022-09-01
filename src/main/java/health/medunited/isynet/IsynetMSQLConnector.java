@@ -1,7 +1,8 @@
 package health.medunited.isynet;
 
+import health.medunited.service.BundleParser;
 import health.medunited.service.MedicationDbLookup;
-import health.medunited.model.*;
+import org.hl7.fhir.r4.model.Bundle;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.sql.*;
@@ -16,10 +17,12 @@ import java.util.logging.Logger;
 public class IsynetMSQLConnector {
 
     private static final Logger log = Logger.getLogger(IsynetMSQLConnector.class.getName());
+    private static final String PATIENT = "patient";
+    private static final String MEDICATIONSTATEMENT = "medicationStatement";
 
-    public void insertToIsynet(BundleStructure bundleStructure) {
+    public void insertToIsynet(Bundle parsedBundle) {
 
-        String pznToLookup = bundleStructure.getMedicationStatement().getPZN();
+        String pznToLookup = BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle);
         List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(pznToLookup);
         printMedicationInfo(pznToLookup, tableEntry);
 
@@ -34,20 +37,20 @@ public class IsynetMSQLConnector {
              // deleteAllMedications(stmt);
              // deleteAllPatients(stmt);
 
-            int patientNumber = checkIfPatientExistsInTheSystem(bundleStructure, stmt);
+            int patientNumber = checkIfPatientExistsInTheSystem(parsedBundle, stmt);
 
             if (patientNumber == -1) { // Patient does not exist
                 log.info("This patient does not exist in the Db.");
-                patientNumber = createPatient(bundleStructure, stmt);
+                patientNumber = createPatient(parsedBundle, stmt);
             }
 
             // Creates medication only if it exists in the Db from where medication info is obtained + Patient is not dead + Patient is not at the hospital
             if (tableEntry != null && !isPatientDateOfDeathKnown(patientNumber, stmt)
                                    && !isPatientDeadButTheDateIsUnknown(patientNumber, stmt)
                                    && !checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
-                createMedication(tableEntry, patientNumber, bundleStructure, stmt);
+                createMedication(tableEntry, patientNumber, parsedBundle, stmt);
             } else if (tableEntry == null) {
-                log.info("The medication corresponding to PZN " + bundleStructure.getMedicationStatement().getPZN() + " could not be found on the database, please insert it manually.");
+                log.info("The medication corresponding to PZN " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + " could not be found on the database, please insert it manually.");
             } else if (isPatientDateOfDeathKnown(patientNumber, stmt) || isPatientDeadButTheDateIsUnknown(patientNumber, stmt)) {
                 log.info("The medication was not created because the Patient is dead.");
             } else if (checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
@@ -72,15 +75,15 @@ public class IsynetMSQLConnector {
         }
     }
 
-    public int checkIfPatientExistsInTheSystem(BundleStructure bundleStructure, Statement stmt) throws SQLException {
+    public int checkIfPatientExistsInTheSystem(Bundle parsedBundle, Statement stmt) throws SQLException {
 
-        String[] birthDate = bundleStructure.getPatient().getBirthDate().split("-");
+        String[] birthDate = BundleParser.getBirthDate(PATIENT, parsedBundle).split("-");
         String differentBirthDateFormat = birthDate[0] + "-" + birthDate[2] + "-" + birthDate[1];
         String SQL_getPatientNumber = "" +
                 "SET XACT_ABORT ON\n" + // in case of an error, rollback will be issued automatically
                 "BEGIN TRANSACTION\n" +
-                "SELECT Nummer FROM Patient WHERE (Vorname = '" + bundleStructure.getPatient().getFirstName() +
-                "' AND Name = '" + bundleStructure.getPatient().getLastName() +
+                "SELECT Nummer FROM Patient WHERE (Vorname = '" + BundleParser.getFirstName(PATIENT, parsedBundle) +
+                "' AND Name = '" + BundleParser.getLastName(PATIENT, parsedBundle) +
                 "' AND Geburtsdatum='"+ differentBirthDateFormat + " 00:00:00.000"+"');" +
                 "COMMIT TRANSACTION";
 
@@ -95,15 +98,15 @@ public class IsynetMSQLConnector {
         }
     }
 
-    public int createPatient(BundleStructure bundleStructure, Statement stmt) throws SQLException {
+    public int createPatient(Bundle parsedBundle, Statement stmt) throws SQLException {
 
         log.info("Attempting to create patient...");
         String anrede = "";
         String geschlecht = "";
-        if (bundleStructure.getPatient().getGender().equals("female")) {
+        if (BundleParser.getGender(PATIENT, parsedBundle).equals("female")) {
             anrede = "Frau";
             geschlecht = "W";
-        } else if (bundleStructure.getPatient().getGender().equals("male")) {
+        } else if (BundleParser.getGender(PATIENT, parsedBundle).equals("male")) {
             anrede = "Herrn";
             geschlecht = "M";
         }
@@ -133,11 +136,11 @@ public class IsynetMSQLConnector {
                                     "[OstWestStatus],[MandantAnlage],[DatumAnlage],[FarblicheKennzeichnung],[Raucher],[OIKennung]," +
                                     "[SoundexName],[AbrechnungPVS],[Hausnummer],[PostfachPLZ],[PostfachOrt],[PostfachLKZ]," +
                                     "[PibsAutoAkt],[KISFreigabe],[DatumÄnderung],[UserGeändert],[MandantGeändert],[UserAnlage])" +
-            "VALUES(" + patientNummer + ", " + publicNummer + ", '" + bundleStructure.getPatient().getFirstName() + "','" +
-                    bundleStructure.getPatient().getLastName() + "','" + bundleStructure.getPatient().getFirstName() + "','" +
-                    anrede + "',{d '" + bundleStructure.getPatient().getBirthDate() + "'},'" + geschlecht + "','" +
-                    bundleStructure.getPatient().getStreet() + "','D','" + bundleStructure.getPatient().getPostalCode() +
-                    "','" + bundleStructure.getPatient().getCity() + "','M','101575519','TechnikerKra','1000',1,1,{d '" +
+            "VALUES(" + patientNummer + ", " + publicNummer + ", '" + BundleParser.getFirstName(PATIENT, parsedBundle) + "','" +
+                    BundleParser.getLastName(PATIENT, parsedBundle) + "','" + BundleParser.getFirstName(PATIENT, parsedBundle) + "','" +
+                    anrede + "',{d '" + BundleParser.getBirthDate(PATIENT, parsedBundle) + "'},'" + geschlecht + "','" +
+                    BundleParser.getStreet(PATIENT, parsedBundle) + "','D','" + BundleParser.getPostalCode(PATIENT, parsedBundle) +
+                    "','" + BundleParser.getCity(PATIENT, parsedBundle) + "','M','101575519','TechnikerKra','1000',1,1,{d '" +
                     timestamp1 + "'},1,-2,-2,'S7500',-2,'140','','','D',1,0,{ts '" + timestamp2 + "'},1,1,1)\n" +
 
             // KrablLink table --------------------------------------------------------------------------------------------------------
@@ -151,8 +154,8 @@ public class IsynetMSQLConnector {
             // TagProtokoll table -----------------------------------------------------------------------------------------------------
             "INSERT [dbo].[TagProtokoll] ([PatientNummer],[ScheinNummer],[Info],[Suchwort],[Datum],[LinkNummer],[Satzart]," +
                                          "[Text],[Mandant],[Benutzer],[Uhrzeit])" +
-            "VALUES(" + patientNummer + "," + scheinNummer + ",'" + bundleStructure.getPatient().getLastName() + ", " +
-                    bundleStructure.getPatient().getFirstName() + " (" + patientNummer + ")','Anmeldung',{d '" + timestamp1 +
+            "VALUES(" + patientNummer + "," + scheinNummer + ",'" + BundleParser.getLastName(PATIENT, parsedBundle) + ", " +
+                    BundleParser.getFirstName(PATIENT, parsedBundle) + " (" + patientNummer + ")','Anmeldung',{d '" + timestamp1 +
                     "'},0,3000,'Neuer Patient erfasst.',1,1,{t '" + timestamp3 + "'})\n" +
 
             // Schein table -----------------------------------------------------------------------------------------------------------
@@ -178,15 +181,15 @@ public class IsynetMSQLConnector {
                                    "[PostfachLKZ],[BesonderePersonenGruppe],[DMPKennzeichnung],[VersicherungsschutzBeginn]," +
                                    "[Kostentraegername],[KISFreigabe])" +
             "VALUES(" + scheinNummer + "," + patientNummer + ",2,0,'',1,0,'" + quarter + year + "','" + quarter + year + "','','" +
-                    anrede + "','','','" + bundleStructure.getPatient().getLastName() + "','" + bundleStructure.getPatient().getFirstName() +
-                    "',{d '" + bundleStructure.getPatient().getBirthDate() + "'},'D','" + bundleStructure.getPatient().getPostalCode() +
-                    "','" + bundleStructure.getPatient().getCity() + "','" + bundleStructure.getPatient().getStreet() + "','M','" +
+                    anrede + "','','','" + BundleParser.getLastName(PATIENT, parsedBundle) + "','" + BundleParser.getFirstName(PATIENT, parsedBundle) +
+                    "',{d '" + BundleParser.getBirthDate(PATIENT, parsedBundle) + "'},'D','" + BundleParser.getPostalCode(PATIENT, parsedBundle) +
+                    "','" + BundleParser.getCity(PATIENT, parsedBundle) + "','" + BundleParser.getStreet(PATIENT, parsedBundle) + "','M','" +
                     geschlecht + "',{d '1899-12-30'},{d '1899-12-30'},'101575519','TechnikerKra','1000',1,27,0,'',0,{d '1899-12-30'}," +
                     "0,0,0,0,0,0,1,1,{d '" + timestamp1 + "'},1,1,{ts '" + timestamp1 + " " + timestamp3 + "'},1,'','','','',''," +
                     "{d '1899-12-30'},{d '1899-12-30'},{d '1899-12-30'},{d '1899-12-30'},0,'','','',0,0,0,0,'',{d '1899-12-30'}," +
                     "{d '1899-12-30'},0,0,0,'','','',0,'','','','','','','','',0,0,0,'',0,{t '" + timestamp3 + "'},0,'','',''," +
                     "0,'','','{4C037011-B14E-4182-BC6D-D789DF966944}','','','','','','','',0,'',0,'--','" +
-                    bundleStructure.getPatient().getPostalCode() + "','','','','','','D','','',{d '1899-12-30'},'',0)\n" +
+                    BundleParser.getPostalCode(PATIENT, parsedBundle) + "','','','','','','D','','',{d '1899-12-30'},'',0)\n" +
 
             // KrablLink table --------------------------------------------------------------------------------------------------------
             "INSERT [dbo].[KrablLink] ([PatientNummer],[Satzart],[Datum],[Kategorie],[Kurzinfo],[MandantGeändert],[UserGeändert]," +
@@ -200,8 +203,8 @@ public class IsynetMSQLConnector {
             // TagProtokoll table -----------------------------------------------------------------------------------------------------
             "INSERT [dbo].[TagProtokoll] ([PatientNummer],[ScheinNummer],[Info],[Suchwort],[Datum],[LinkNummer],[Satzart]," +
                                          "[Text],[Mandant],[Benutzer],[Uhrzeit])" +
-            "VALUES(" + patientNummer + "," + scheinNummer + ",'" + bundleStructure.getPatient().getLastName() + ", " +
-                    bundleStructure.getPatient().getFirstName() + " " + "(" + patientNummer + ")" + "','Anmeldung',{d '" +
+            "VALUES(" + patientNummer + "," + scheinNummer + ",'" + BundleParser.getLastName(PATIENT, parsedBundle) + ", " +
+                    BundleParser.getFirstName(PATIENT, parsedBundle) + " " + "(" + patientNummer + ")" + "','Anmeldung',{d '" +
                     timestamp1 + "'},0,4000,'Neuer ASA: Techniker Krankenkasse; " + quarter + "/" +
                     year.substring(year.length()-2) + "',1,1,{t '" + timestamp3 + "'})\n" +
 
@@ -212,13 +215,13 @@ public class IsynetMSQLConnector {
 
         stmt.execute(SQL_createNewPatient);
 
-        int patientNumber = checkIfPatientExistsInTheSystem(bundleStructure, stmt); // check if patient was created
+        int patientNumber = checkIfPatientExistsInTheSystem(parsedBundle, stmt); // check if patient was created
         if (patientNumber > -1) {
             log.info("Patient was successfully created in the Db.");
             return patientNumber;
         } else {
             log.info("Some problem occurred and the patient was not created.");
-            return createPatient(bundleStructure, stmt);
+            return createPatient(parsedBundle, stmt);
         }
     }
 
@@ -264,10 +267,10 @@ public class IsynetMSQLConnector {
         return false;
     }
 
-    public void createMedication(List<String> tableEntry, int patientNummer, BundleStructure bundleStructure, Statement stmt) throws SQLException {
+    public void createMedication(List<String> tableEntry, int patientNummer, Bundle parsedBundle, Statement stmt) throws SQLException {
 
         log.info("Attempting to create medication...");
-        String[] dosage = bundleStructure.getMedicationStatement().getDosage().split("-");
+        String[] dosage = BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle).split("-");
         String morgens = dosage[0];
         String mittags = dosage[1];
         String abends = dosage[2];
@@ -303,7 +306,7 @@ public class IsynetMSQLConnector {
                 "[Typ], [Farbe], [IsPriscus], [Created], [DatasetCreated], [UserCreated], " +
                 "[LastChanged], [DatasetLastChanged], [UserLastChanged], [IsArchiviert], " +
                 "[Hilfsmittelpositionsnummer])" +
-                "VALUES (" + medikamentId + ", " + bundleStructure.getMedicationStatement().getPZN() + ", N'" +
+                "VALUES (" + medikamentId + ", " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + ", N'" +
                 MedicationDbLookup.getMedicationName(tableEntry) + "', N'', N'" + MedicationDbLookup.getATC(tableEntry) +
                 "', N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'', N'', N'', N'', N'', N'', 1, 1, 1665, NULL," +
                 " NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1'," +
@@ -345,8 +348,8 @@ public class IsynetMSQLConnector {
                 "[IsErezept], [AbgabehinweisApotheke])" +
                 "VALUES (" + rezeptId + ", N'', 0, " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), " +
                 "CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'2', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" +
-                MedicationDbLookup.getMedicationName(tableEntry) + "\n" + "PZN" + bundleStructure.getMedicationStatement().getPZN() +
-                " »" + bundleStructure.getMedicationStatement().getDosage() + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, " +
+                MedicationDbLookup.getMedicationName(tableEntry) + "\n" + "PZN" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
+                " »" + BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, " +
                 "NULL, NULL, 1, 1, 0, 0, NULL, 0, 0, NULL, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', " +
                 "N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL, N'101', 3, 0, 0, NULL, 0, " +
                 "1, NULL)\n" +
@@ -371,7 +374,7 @@ public class IsynetMSQLConnector {
                 "[UnteresPreisdrittel], [KrablLinkNrRezept], [BTMGebühr], [DDDPackung], [Übertragen], " +
                 "[FarbKategorie], [Merkmal], [KrablLinkNr])" +
                 "VALUES (" + scheinMedNummer + ", " + getPatientScheinNummer(patientNummer, stmt) + "," + patientNummer + ", N'" +
-                bundleStructure.getMedicationStatement().getPZN() + "', N'" + bundleStructure.getMedicationStatement().getPZN() +
+                BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + "', N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
                 "', N'LM', 100, " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, " + MedicationDbLookup.getAVP(tableEntry) +
                 ", 11.6500, N'', N'', 1, 0.0000, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0.0000, 0, 0, N'', N''," +
                 krablLinkNummer + ")\n" +
@@ -384,7 +387,7 @@ public class IsynetMSQLConnector {
                 "[Hintergrundfarbe], [Detail], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantFremd], " +
                 "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
                 "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " +
-                bundleStructure.getMedicationStatement().getDosage() + ", PZN: " + bundleStructure.getMedicationStatement().getPZN() +
+                BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + ", PZN: " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
                 ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0," +
                 " N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
                 "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
@@ -415,8 +418,8 @@ public class IsynetMSQLConnector {
                 "[MPVerordnungsfaehig], [MPVOBefristung], [Verordnet], [MitReimport], [WSTZeile], [WSTNummer], " +
                 "[IMMVorhanden], [Sortierung], [ATCLangtext], [ErstattungStattAbschlag], [VertragspreisNach129_5]," +
                 "[NormGesamtzuzahlung], [Verordnungseinschraenkung], [Verordnungsausschluss], [VOAusschlussAnlage3])" +
-                "VALUES (" + scheinMedDatenNummer + ", N'" + bundleStructure.getMedicationStatement().getPZN() + "', N'', 1, N'" +
-                MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + bundleStructure.getMedicationStatement().getPZN() +
+                "VALUES (" + scheinMedDatenNummer + ", N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + "', N'', 1, N'" +
+                MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
                 "', N'', " + MedicationDbLookup.getAVP(tableEntry) + ", 0.0000, 0.0000, N'S01AE01', N'Pharma Gerke Arzneimittelvertriebs GmbH', " +
                 "N'" + MedicationDbLookup.getComposition(tableEntry) + "', 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
                 "1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, " +

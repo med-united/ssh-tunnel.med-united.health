@@ -9,10 +9,9 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
+import health.medunited.service.BundleParser;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Patient;
-import org.hl7.fhir.r4.model.ResourceType;
 
 import health.medunited.client.T2MedClient;
 
@@ -20,12 +19,15 @@ import health.medunited.client.T2MedClient;
 public class T2MedConnector {
 
     private static Logger log = Logger.getLogger(T2MedConnector.class.getName());
+    private static final String PRACTITIONER = "practitioner";
+    private static final String PATIENT = "patient";
+    private static final String MEDICATIONSTATEMENT = "medicationStatement";
 
     @Inject
     @RestClient
     T2MedClient t2MedClient;
 
-    public void createPrescriptionFromBundle(Bundle prescription) {
+    public void createPrescriptionFromBundle(Bundle parsedBundle) {
 
         JsonObject loginResponseJson = t2MedClient.login();
 
@@ -45,15 +47,13 @@ public class T2MedConnector {
 
         JsonObject doctorReferenceResponseJson = t2MedClient.getDoctorRole(findVerwaltJson);
 
-        String lanr = prescription.getEntry().get(0).getResource().getChildByName("identifier").getValues().get(0).getChildByName("value").getValues().get(0).toString();
+        String lanr = BundleParser.getLanr(PRACTITIONER, parsedBundle);
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
         String doctorRoleReference = doctorReferenceResponseJson.getJsonObject("benutzerBearbeitenDTO").getJsonArray("arztrollen").stream().filter(jv -> jv instanceof JsonObject && ((JsonObject) jv).getJsonObject("arztrolle").getString("lanr").equals(lanr)).findFirst().get().asJsonObject().getJsonObject("arztrolle").getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Doctor Role reference: " + doctorRoleReference);
 
-        Patient patient = (Patient) prescription.getEntry().stream().filter(p -> p.getResource().getResourceType() == ResourceType.Patient).findFirst().get().getResource();
-
-        JsonObject searchPatient = Json.createObjectBuilder().add("searchString", patient.getName().get(0).getFamily() + ", " + patient.getName().get(0).getGivenAsSingleString()).build();
+        JsonObject searchPatient = Json.createObjectBuilder().add("searchString", BundleParser.getLastName(PATIENT, parsedBundle) + ", " + BundleParser.getFirstName(PATIENT, parsedBundle)).build();
 
         JsonObject searchPatientResponseJson = t2MedClient.filterPatients(searchPatient);
 
@@ -76,7 +76,7 @@ public class T2MedConnector {
         String caseLocationReference = caseLocationResponseJson.getJsonArray("behandlungsorte").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
         log.info("Case Location Reference: " + caseLocationReference);
 
-        String pzn = prescription.getEntry().get(2).getResource().getChildByName("identifier").getValues().get(0).getNamedProperty("value").getValues().get(0).primitiveValue();
+        String pzn = BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle);
 
         JsonObject amdbSearchQueryJson = buildAmdbSearchQueryJson(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
         JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearchQueryJson);
