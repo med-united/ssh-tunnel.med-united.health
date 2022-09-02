@@ -34,8 +34,8 @@ public class IsynetMSQLConnector {
         String connectionUrl = "jdbc:sqlserver://lhtufukeqw3tayq1.myfritz.net:1433;databaseName=WINACS;user=AP31;password=722033800;trustServerCertificate=true";
         try (Connection con = DriverManager.getConnection(connectionUrl); Statement stmt = con.createStatement()) {
 
-             // deleteAllMedications(stmt);
-             // deleteAllPatients(stmt);
+            // deleteAllMedications(stmt);
+            // deleteAllPatients(stmt);
 
             int patientNumber = checkIfPatientExistsInTheSystem(parsedBundle, stmt);
 
@@ -347,7 +347,7 @@ public class IsynetMSQLConnector {
                 "[VertragsZusatzinfos_Wirkstoffzeile], [VertragsZusatzinfos_IsWirkstoffzeileActivated], " +
                 "[IsErezept], [AbgabehinweisApotheke])" +
                 "VALUES (" + rezeptId + ", N'', 0, " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), " +
-                "CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'2', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" +
+                "CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'" + patientNummer + "', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" +
                 MedicationDbLookup.getMedicationName(tableEntry) + "\n" + "PZN" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
                 " »" + BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, " +
                 "NULL, NULL, 1, 1, 0, 0, NULL, 0, 0, NULL, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', " +
@@ -388,8 +388,8 @@ public class IsynetMSQLConnector {
                 "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
                 "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " +
                 BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + ", PZN: " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
-                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0," +
-                " N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
+                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, " + patientNummer +
+                ", N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
                 "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
 
                 // KrablLinkID table ---------------------------------------------------------------------------------------------------
@@ -493,10 +493,12 @@ public class IsynetMSQLConnector {
         String SQL_deleteVerordnungsmodulRezeptDbo = "DELETE FROM VerordnungsmodulRezeptDbo WHERE Id >= 0";
         String SQL_deleteVerordnungsmodulDosierungDbo = "DELETE FROM VerordnungsmodulDosierungDbo WHERE Id >= 0";
         String SQL_deleteScheinMed = "DELETE FROM ScheinMed WHERE Nummer >= 0";
+        // String SQL_deleteKrablLink = "DELETE FROM KrablLink WHERE Nummer >= 0"; // might also delete information related to patient insertion
         String SQL_deleteKrablLinkID = "DELETE FROM KrablLinkID WHERE Nummer >= 0";
         String SQL_deleteScheinMedDaten = "DELETE FROM ScheinMedDaten WHERE Nummer >= 0";
         stmt.execute(SQL_deleteScheinMedDaten);
         stmt.execute(SQL_deleteKrablLinkID);
+        // stmt.execute(SQL_deleteKrablLink); // might also delete information related to patient insertion
         stmt.execute(SQL_deleteScheinMed);
         stmt.execute(SQL_deleteVerordnungsmodulDosierungDbo);
         stmt.execute(SQL_deleteVerordnungsmodulMedikationDbo);
