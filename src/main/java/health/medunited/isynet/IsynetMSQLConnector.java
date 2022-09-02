@@ -388,7 +388,7 @@ public class IsynetMSQLConnector {
                 "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
                 "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " +
                 BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + ", PZN: " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
-                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, " + patientNummer +
+                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, " + getPatientScheinNummer(patientNummer, stmt) +
                 ", N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
                 "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
 
