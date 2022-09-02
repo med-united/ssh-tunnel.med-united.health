@@ -141,7 +141,8 @@ public class IsynetMSQLConnector {
                     anrede + "',{d '" + BundleParser.getBirthDate(PATIENT, parsedBundle) + "'},'" + geschlecht + "','" +
                     BundleParser.getStreet(PATIENT, parsedBundle) + "','D','" + BundleParser.getPostalCode(PATIENT, parsedBundle) +
                     "','" + BundleParser.getCity(PATIENT, parsedBundle) + "','M','101575519','TechnikerKra','1000',1,1,{d '" +
-                    timestamp1 + "'},1,-2,-2,'S7500',-2,'140','','','D',1,0,{ts '" + timestamp2 + "'},1,1,1)\n" +
+                    timestamp1 + "'},1,-2,-2,'S7500',-2,'" + BundleParser.getHouseNumber(PATIENT, parsedBundle) + "','','','D',1,0," +
+                    "{ts '" + timestamp2 + "'},1,1,1)\n" +
 
             // KrablLink table --------------------------------------------------------------------------------------------------------
             "INSERT [dbo].[KrablLink] ([Uhrzeitanlage],[PatientNummer],[Satzart],[Datum],[Kategorie],[Kurzinfo],[Passwort]," +
@@ -189,7 +190,7 @@ public class IsynetMSQLConnector {
                     "{d '1899-12-30'},{d '1899-12-30'},{d '1899-12-30'},{d '1899-12-30'},0,'','','',0,0,0,0,'',{d '1899-12-30'}," +
                     "{d '1899-12-30'},0,0,0,'','','',0,'','','','','','','','',0,0,0,'',0,{t '" + timestamp3 + "'},0,'','',''," +
                     "0,'','','{4C037011-B14E-4182-BC6D-D789DF966944}','','','','','','','',0,'',0,'--','" +
-                    BundleParser.getPostalCode(PATIENT, parsedBundle) + "','','','','','','D','','',{d '1899-12-30'},'',0)\n" +
+                    BundleParser.getHouseNumber(PATIENT, parsedBundle) + "','','','','','','D','','',{d '1899-12-30'},'',0)\n" +
 
             // KrablLink table --------------------------------------------------------------------------------------------------------
             "INSERT [dbo].[KrablLink] ([PatientNummer],[Satzart],[Datum],[Kategorie],[Kurzinfo],[MandantGeändert],[UserGeändert]," +
@@ -388,8 +389,9 @@ public class IsynetMSQLConnector {
                 "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
                 "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N', Dos.: " +
                 BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + ", PZN: " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
-                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, " + getPatientScheinNummer(patientNummer, stmt) +
-                ", N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
+                ", AVP: " + MedicationDbLookup.getAVP(tableEntry) + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, " +
+                getPatientScheinNummer(patientNummer, stmt) + ", N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, " +
+                "CAST(N'1899-12-30T15:04:31.000' AS DateTime))\n" +
                 "SET IDENTITY_INSERT [dbo].[KrablLink] OFF\n" +
 
                 // KrablLinkID table ---------------------------------------------------------------------------------------------------
