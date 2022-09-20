@@ -64,10 +64,10 @@
           {
             "use": "home",
             "line": [
-              "Blue avenue"
+              "11 Blue avenue"
             ],
             "city": "Berlin",
-            "postalCode": "11122"
+            "postalCode": "10115"
           }
         ]
       }
@@ -96,15 +96,15 @@
           }
         ],
         "gender": "female",
-        "birthDate": "2022-07-05",
+        "birthDate": "1960-12-31",
         "address": [
           {
             "use": "home",
             "line": [
               "Orange avenue 5"
             ],
-            "city": "Berlin",
-            "postalCode": "55555"
+            "city": "München",
+            "postalCode": "80333"
           }
         ],
         "generalPractitioner": [
@@ -129,11 +129,11 @@
         },
         "identifier": [
           {
-            "value": "3334262"
+            "value": "8826490"
           }
         ],
         "medicationCodeableConcept": {
-          "text": "APOGEN Ibuprofen 400 Schmerzmittel Filmtabletten "
+          "text": "BETAISODONA Salbe"
         },
         "subject": {
           "reference": "Patient/2777"

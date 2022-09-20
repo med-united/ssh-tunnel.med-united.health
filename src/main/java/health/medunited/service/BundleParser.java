@@ -133,7 +133,7 @@ public class BundleParser {
         else if (Objects.equals(resourceType, PATIENT) && patient.hasAddress() && patient.getAddress().get(0).hasPostalCode()) {
             postalCode = patient.getAddress().get(0).getPostalCode();
         }
-        else if (Objects.equals(resourceType, "organization") && pharmacy.hasAddress() && pharmacy.getAddress().get(0).hasPostalCode()) {
+        else if (Objects.equals(resourceType, PHARMACY) && pharmacy.hasAddress() && pharmacy.getAddress().get(0).hasPostalCode()) {
             postalCode = pharmacy.getAddress().get(0).getPostalCode();
         }
         return postalCode;
@@ -233,7 +233,7 @@ public class BundleParser {
     public static String getMedicationName(String resourceType, Bundle parsedBundle) {
         String medicationName = "";
         MedicationStatement medicationStatement = (MedicationStatement) parsedBundle.getEntry().get(2).getResource();
-        if (Objects.equals(resourceType, MEDICATIONSTATEMENT) && medicationStatement.hasMedicationCodeableConcept()) {
+        if (Objects.equals(resourceType, MEDICATIONSTATEMENT) && medicationStatement.hasMedicationCodeableConcept() && medicationStatement.getMedicationCodeableConcept().hasText()) {
             medicationName = medicationStatement.getMedicationCodeableConcept().getText();
         }
         return medicationName;
