@@ -18,6 +18,7 @@ public class PublicKeyService {
         try (Stream<String> lines = Files.lines(AUTHORIZED_KEYS_FILE)) {
             lines.filter(line -> line.contains(user))
                     .forEach(foundLine::set);
+            System.out.println("Found line: " + foundLine.get());
             return splitLine(foundLine);
         } catch (IOException e) {
             e.printStackTrace();
