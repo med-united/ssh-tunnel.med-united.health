@@ -17,17 +17,14 @@ import javax.jms.Message;
 import javax.jms.Queue;
 
 import health.medunited.event.SshConnectionClosed;
-import health.medunited.event.SshConnectionOpen;
 import health.medunited.model.*;
 import health.medunited.service.BundleParser;
 import org.hl7.fhir.r4.model.Bundle;
 import health.medunited.isynet.IsynetMSQLConnector;
 import health.medunited.t2med.T2MedConnector;
-import io.quarkus.runtime.ShutdownEvent;
-import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
-public class PrescriptionConsumer implements Runnable{
+public class PrescriptionConsumer {
 
     private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
@@ -45,16 +42,6 @@ public class PrescriptionConsumer implements Runnable{
 
     private final ExecutorService scheduler = Executors.newSingleThreadExecutor();
 
-    private PrescriptionRequest prescription;
-
-    public Object getTest() {
-        return prescription;
-    }
-
-    void onStart(@ObservesAsync SshConnectionOpen ev) throws InterruptedException {
-        scheduler.submit(this);
-    }
-
     void onStop(@ObservesAsync SshConnectionClosed ev) {
         scheduler.shutdown();
     }
@@ -65,19 +52,17 @@ public class PrescriptionConsumer implements Runnable{
     @Inject
     T2MedConnector t2MedConnector;
 
-    @Override
-    public void run() {
-        try (JMSContext context = connectionFactory.createContext(JMSContext.SESSION_TRANSACTED)) {
+    public void run(String publicKey) {
+        try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
             Queue queue = context.createQueue("Prescriptions");
             while (!scheduler.isShutdown()) {
-                try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = 'test'")) {
+                try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = '" + publicKey + "'")) {
                     Message message = consumer.receive();
                     if (message == null) return;
                     if (message.propertyExists(FINGERPRINT_HEADER) && message.propertyExists(PVS_HEADER)) {
-                        String publicKey = message.getObjectProperty(FINGERPRINT_HEADER).toString();
                         String practiceManagement = message.getObjectProperty(PVS_HEADER).toString();
                         String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
-                        prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
+                        PrescriptionRequest prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
 
                         Bundle parsedBundle = BundleParser.parseBundle(prescription.getFhirBundle());
 

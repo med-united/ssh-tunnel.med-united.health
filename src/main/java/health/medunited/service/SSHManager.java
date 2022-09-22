@@ -32,6 +32,9 @@ public class SSHManager {
     @Inject
     Event<SshConnectionOpen> sshConnectionOpen;
 
+    @Inject
+    PrescriptionConsumer prescriptionConsumer;
+
     public boolean prepareKeyForStorage(PublicKey publicKey) {
         RSAPublicKey rsaPublicKey = (RSAPublicKey) publicKey;
         String publicKeyEncoded = encodePublicKey(rsaPublicKey);
@@ -67,11 +70,7 @@ public class SSHManager {
         }
     }
 
-    //observe event from ssh connection
-    //if event is received, then instantiate artemis consumer and start listening
-    //to the queue
-//    public void onSshConnectionOpen(@ObservesAsync SshConnectionOpen event) {
-//        Integer adddition = 1;
-//        prescriptionConsumer.run();
-//    }
+    public void onSshConnectionOpen(@ObservesAsync SshConnectionOpen event) {
+        prescriptionConsumer.run(event.getPublicKey());
+    }
 }
