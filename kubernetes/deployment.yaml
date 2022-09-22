@@ -111,6 +111,8 @@ metadata:
   name: ssh-tunnel
   annotations:
     kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: https://care.med-united.health
     nginx.ingress.kubernetes.io/affinity: "cookie"
 spec:
   tls:
