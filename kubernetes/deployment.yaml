@@ -112,7 +112,10 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type, Authorization, Cache-Control
+    nginx.ingress.kubernetes.io/cors-allow-methods: POST, GET, OPTIONS, DELETE, PUT
     nginx.ingress.kubernetes.io/cors-allow-origin: https://care.med-united.health
+    nginx.ingress.kubernetes.io/cors-expose-headers: X-Custom-Header
     nginx.ingress.kubernetes.io/affinity: "cookie"
 spec:
   tls:
