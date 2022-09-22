@@ -75,3 +75,17 @@ spec:
       name: http
   selector:
     app: ssh-tunnel
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: ssh-tunnel-backend
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: ssh-tunnel
