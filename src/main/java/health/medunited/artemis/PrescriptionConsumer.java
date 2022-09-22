@@ -6,7 +6,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
+import javax.enterprise.event.ObservesAsync;
 import javax.inject.Inject;
 import javax.jms.BytesMessage;
 import javax.jms.ConnectionFactory;
@@ -16,6 +16,8 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
 
+import health.medunited.event.SshConnectionClosed;
+import health.medunited.event.SshConnectionOpen;
 import health.medunited.model.*;
 import health.medunited.service.BundleParser;
 import org.hl7.fhir.r4.model.Bundle;
@@ -25,7 +27,7 @@ import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
-public class PrescriptionConsumer implements Runnable {
+public class PrescriptionConsumer implements Runnable{
 
     private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
 
@@ -49,11 +51,11 @@ public class PrescriptionConsumer implements Runnable {
         return prescription;
     }
 
-    void onStart(@Observes StartupEvent ev) {
+    void onStart(@ObservesAsync SshConnectionOpen ev) throws InterruptedException {
         scheduler.submit(this);
     }
 
-    void onStop(@Observes ShutdownEvent ev) {
+    void onStop(@ObservesAsync SshConnectionClosed ev) {
         scheduler.shutdown();
     }
 
@@ -65,10 +67,10 @@ public class PrescriptionConsumer implements Runnable {
 
     @Override
     public void run() {
-        try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+        try (JMSContext context = connectionFactory.createContext(JMSContext.SESSION_TRANSACTED)) {
             Queue queue = context.createQueue("Prescriptions");
-            while (true) {
-                try (JMSConsumer consumer = context.createConsumer(queue)) {
+            while (!scheduler.isShutdown()) {
+                try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = 'test'")) {
                     Message message = consumer.receive();
                     if (message == null) return;
                     if (message.propertyExists(FINGERPRINT_HEADER) && message.propertyExists(PVS_HEADER)) {
@@ -76,7 +78,6 @@ public class PrescriptionConsumer implements Runnable {
                         String practiceManagement = message.getObjectProperty(PVS_HEADER).toString();
                         String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
                         prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
-                        // log.info("Content of Bundle: " + prescription.getFhirBundle());
 
                         Bundle parsedBundle = BundleParser.parseBundle(prescription.getFhirBundle());
 

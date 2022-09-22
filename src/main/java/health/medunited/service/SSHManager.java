@@ -1,8 +1,13 @@
 package health.medunited.service;
 
+import health.medunited.artemis.PrescriptionConsumer;
+import health.medunited.event.SshConnectionOpen;
 import org.bouncycastle.util.encoders.Base64;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Event;
+import javax.enterprise.event.ObservesAsync;
+import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -24,10 +29,14 @@ public class SSHManager {
 
     private static final String SSH_RSA = "ssh-rsa";
 
+    @Inject
+    Event<SshConnectionOpen> sshConnectionOpen;
+
     public boolean prepareKeyForStorage(PublicKey publicKey) {
         RSAPublicKey rsaPublicKey = (RSAPublicKey) publicKey;
         String publicKeyEncoded = encodePublicKey(rsaPublicKey);
         storeKeyInAuthorizedKeysFile(publicKeyEncoded);
+        sshConnectionOpen.fireAsync(new SshConnectionOpen(publicKeyEncoded));
         return true;
     }
 
@@ -57,4 +66,12 @@ public class SSHManager {
             e.printStackTrace();
         }
     }
+
+    //observe event from ssh connection
+    //if event is received, then instantiate artemis consumer and start listening
+    //to the queue
+//    public void onSshConnectionOpen(@ObservesAsync SshConnectionOpen event) {
+//        Integer adddition = 1;
+//        prescriptionConsumer.run();
+//    }
 }
