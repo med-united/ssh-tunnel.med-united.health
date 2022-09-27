@@ -1,17 +1,24 @@
 package health.medunited.isynet;
 
-import health.medunited.service.BundleParser;
-import health.medunited.service.MedicationDbLookup;
-import org.hl7.fhir.r4.model.Bundle;
-
-import javax.enterprise.context.ApplicationScoped;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.IsoFields;
 import java.util.List;
 import java.util.logging.Logger;
+
+import javax.enterprise.context.ApplicationScoped;
+
+import org.hl7.fhir.r4.model.Bundle;
+
+import health.medunited.service.BundleParser;
+import health.medunited.service.MedicationDbLookup;
 
 @ApplicationScoped
 public class IsynetMSQLConnector {
@@ -272,10 +279,10 @@ public class IsynetMSQLConnector {
 
         log.info("Attempting to create medication...");
         String[] dosage = BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle).split("-");
-        String morgens = dosage[0];
-        String mittags = dosage[1];
-        String abends = dosage[2];
-        String nachts = dosage[3];
+        String morgens = dosage.length > 0 ? dosage[0] : "0";
+        String mittags = dosage.length > 1 ? dosage[1] : "0";
+        String abends = dosage.length > 2 ? dosage[2] : "0";
+        String nachts = dosage.length > 3 ? dosage[3] : "0";
 
         DateTimeFormatter dtf1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS");
         DateTimeFormatter dtf2 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");

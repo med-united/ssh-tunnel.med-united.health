@@ -38,10 +38,7 @@ public class SSHService {
 
     private static Logger log = Logger.getLogger(SSHService.class.getName());
 
-    public static final int PORT = 2222;
-
-//    @Inject
-//    SSHTunnelManager sSHTunnelManager;
+    public static final int PORT = 22;
 
     @Inject
     SSHManager sshManager;
@@ -65,11 +62,18 @@ public class SSHService {
         sshServer.setHost("0.0.0.0");
         sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
         sshServer.setPublickeyAuthenticator((username, key, session) -> {
-            SshConnectionOpen sshConnectionOpen = session2key.get(session);
-            sshConnectionOpen.setPublicKey(SSHManager.encodePublicKey((RSAPublicKey) key));
-            sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
-            session2key.remove(session);
-            return sshManager.prepareKeyForStorage(key);
+            try {
+                SshConnectionOpen sshConnectionOpen = session2key.get(session);
+                if(sshConnectionOpen != null) {
+                    sshConnectionOpen.setPublicKey(SSHManager.encodePublicKey((RSAPublicKey) key));
+                    sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
+                    session2key.remove(session);
+                }
+                return sshManager.prepareKeyForStorage(key);
+            } catch(Exception ex) {
+                log.log(Level.SEVERE, "Problem with PublickeyAuthenticator", ex);
+                return false;
+            }
         });
         sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
             @Override

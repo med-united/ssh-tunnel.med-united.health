@@ -2,8 +2,10 @@ package health.medunited.artemis;
 
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import javax.jms.BytesMessage;
 import javax.jms.ConnectionFactory;
@@ -20,6 +22,7 @@ import health.medunited.model.PrescriptionRequest;
 import health.medunited.service.BundleParser;
 import health.medunited.t2med.T2MedConnector;
 
+@Dependent
 public class CancelablePrescriptionConsumer implements Callable<Void> {
 
     private static final Logger log = Logger.getLogger(CancelablePrescriptionConsumer.class.getName());
@@ -45,7 +48,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
     private String publicKeyFingerprint;
 
     public CancelablePrescriptionConsumer() {
-        
+
     }
 
     public String getPublicKeyFingerprint() {
@@ -123,8 +126,12 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
                         log.info("Invalid content");
                     }
                 } catch (Exception e) {
-                    log.info(e.getMessage());
-                    break;
+                    if(e instanceof InterruptedException) {
+                        log.info("Prescription Consumer Interrupeted e.g. by SSH Connection close. Ending.");
+                        break;
+                    } else {
+                        log.log(Level.SEVERE, "Problem will processing message", e);
+                    }
                 }
             }
         } catch (Exception e) {
