@@ -1,13 +1,7 @@
 package health.medunited.service;
 
-import health.medunited.artemis.PrescriptionConsumer;
-import health.medunited.event.SshConnectionOpen;
-import org.bouncycastle.util.encoders.Base64;
+import static health.medunited.Constants.AUTHORIZED_KEYS_FILE;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Event;
-import javax.enterprise.event.ObservesAsync;
-import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -20,7 +14,9 @@ import java.time.LocalDateTime;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static health.medunited.Constants.AUTHORIZED_KEYS_FILE;
+import javax.enterprise.context.ApplicationScoped;
+
+import org.bouncycastle.util.encoders.Base64;
 
 @ApplicationScoped
 public class SSHManager {
@@ -29,21 +25,14 @@ public class SSHManager {
 
     private static final String SSH_RSA = "ssh-rsa";
 
-    @Inject
-    Event<SshConnectionOpen> sshConnectionOpen;
-
-    @Inject
-    PrescriptionConsumer prescriptionConsumer;
-
     public boolean prepareKeyForStorage(PublicKey publicKey) {
         RSAPublicKey rsaPublicKey = (RSAPublicKey) publicKey;
         String publicKeyEncoded = encodePublicKey(rsaPublicKey);
         storeKeyInAuthorizedKeysFile(publicKeyEncoded);
-        sshConnectionOpen.fireAsync(new SshConnectionOpen(publicKeyEncoded));
         return true;
     }
 
-    private String encodePublicKey(RSAPublicKey rsaPublicKey) {
+    static String encodePublicKey(RSAPublicKey rsaPublicKey) {
         ByteArrayOutputStream byteOs = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(byteOs);
         try {
@@ -70,7 +59,4 @@ public class SSHManager {
         }
     }
 
-    public void onSshConnectionOpen(@ObservesAsync SshConnectionOpen event) {
-        prescriptionConsumer.run(event.getPublicKey());
-    }
 }

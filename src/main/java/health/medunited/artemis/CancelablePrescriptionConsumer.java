@@ -1,12 +1,9 @@
 package health.medunited.artemis;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.ObservesAsync;
 import javax.inject.Inject;
 import javax.jms.BytesMessage;
 import javax.jms.ConnectionFactory;
@@ -16,17 +13,25 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Queue;
 
-import health.medunited.event.SshConnectionClosed;
-import health.medunited.model.*;
-import health.medunited.service.BundleParser;
 import org.hl7.fhir.r4.model.Bundle;
+
 import health.medunited.isynet.IsynetMSQLConnector;
+import health.medunited.model.PrescriptionRequest;
+import health.medunited.service.BundleParser;
 import health.medunited.t2med.T2MedConnector;
 
-@ApplicationScoped
-public class PrescriptionConsumer {
+public class CancelablePrescriptionConsumer implements Callable<Void> {
 
-    private static final Logger log = Logger.getLogger(PrescriptionConsumer.class.getName());
+    private static final Logger log = Logger.getLogger(CancelablePrescriptionConsumer.class.getName());
+
+    @Inject
+    ConnectionFactory connectionFactory;
+
+    @Inject
+    IsynetMSQLConnector isynetMSQLConnector;
+
+    @Inject
+    T2MedConnector t2MedConnector;
 
     private static final String PVS_HEADER = "practiceManagementTranslation";
 
@@ -37,32 +42,37 @@ public class PrescriptionConsumer {
     private static final String MEDICATIONSTATEMENT = "medicationStatement";
     private static final String PHARMACY = "organization";
 
-    @Inject
-    ConnectionFactory connectionFactory;
+    private String publicKeyFingerprint;
 
-    private final ExecutorService scheduler = Executors.newSingleThreadExecutor();
-
-    void onStop(@ObservesAsync SshConnectionClosed ev) {
-        scheduler.shutdown();
+    public CancelablePrescriptionConsumer() {
+        
     }
 
-    @Inject
-    IsynetMSQLConnector isynetMSQLConnector;
+    public String getPublicKeyFingerprint() {
+        return this.publicKeyFingerprint;
+    }
 
-    @Inject
-    T2MedConnector t2MedConnector;
+    public void setPublicKeyFingerprint(String publicKeyFingerprint) {
+        this.publicKeyFingerprint = publicKeyFingerprint;
+    }
 
-    public void run(String publicKey) {
+
+
+    @Override
+    public Void call() throws Exception {
+
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
             Queue queue = context.createQueue("Prescriptions");
-            while (!scheduler.isShutdown()) {
-                try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = '" + publicKey + "'")) {
+            while (true) {
+                try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = '" + publicKeyFingerprint + "'")) {
                     Message message = consumer.receive();
-                    if (message == null) return;
+                    if (message == null) {
+                        continue;
+                    }
                     if (message.propertyExists(FINGERPRINT_HEADER) && message.propertyExists(PVS_HEADER)) {
                         String practiceManagement = message.getObjectProperty(PVS_HEADER).toString();
                         String fhirBundle = getFhirBundleFromBytesMessage((BytesMessage) message);
-                        PrescriptionRequest prescription = new PrescriptionRequest(practiceManagement, publicKey, fhirBundle);
+                        PrescriptionRequest prescription = new PrescriptionRequest(practiceManagement, publicKeyFingerprint, fhirBundle);
 
                         Bundle parsedBundle = BundleParser.parseBundle(prescription.getFhirBundle());
 
@@ -114,11 +124,13 @@ public class PrescriptionConsumer {
                     }
                 } catch (Exception e) {
                     log.info(e.getMessage());
+                    break;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return null;
     }
 
     private String getFhirBundleFromBytesMessage(BytesMessage message) throws JMSException {

@@ -1,15 +1,16 @@
 package health.medunited.event;
 
+import org.apache.sshd.common.session.Session;
+
 public class SshConnectionOpen {
 
     //this must contain the public key of the client
     private String publicKey;
 
-    public SshConnectionOpen() {
-    }
+    private Session session;
 
-    public SshConnectionOpen(String publicKey) {
-        this.publicKey = publicKey;
+    public SshConnectionOpen(Session session) {
+        this.session = session;
     }
 
     public String getPublicKey() {
@@ -19,4 +20,13 @@ public class SshConnectionOpen {
     public void setPublicKey(String publicKey) {
         this.publicKey = publicKey;
     }
+
+    public Session getSession() {
+        return this.session;
+    }
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
 }

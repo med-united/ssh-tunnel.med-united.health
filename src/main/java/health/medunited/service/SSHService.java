@@ -1,30 +1,36 @@
 package health.medunited.service;
 
-import health.medunited.event.SSHClientPortForwardEvent;
-import health.medunited.event.SshConnectionClosed;
-import io.quarkus.runtime.Startup;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.logging.LogManager;
-import java.util.logging.Logger;
 
 import org.apache.sshd.common.forward.DefaultForwarderFactory;
 import org.apache.sshd.common.session.Session;
 import org.apache.sshd.common.session.SessionDisconnectHandler;
+import org.apache.sshd.common.session.SessionHeartbeatController.HeartbeatType;
 import org.apache.sshd.common.session.SessionListener;
 import org.apache.sshd.common.session.helpers.TimeoutIndicator;
 import org.apache.sshd.common.util.net.SshdSocketAddress;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.forward.AcceptAllForwardingFilter;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
-import org.apache.sshd.common.session.SessionHeartbeatController.HeartbeatType;
 import org.apache.sshd.server.shell.ProcessShellFactory;
+
+import health.medunited.event.SSHClientPortForwardEvent;
+import health.medunited.event.SshConnectionClosed;
+import health.medunited.event.SshConnectionOpen;
+import io.quarkus.runtime.Startup;
 
 @ApplicationScoped
 @Startup
@@ -32,7 +38,7 @@ public class SSHService {
 
     private static Logger log = Logger.getLogger(SSHService.class.getName());
 
-    public static final int PORT = 22;
+    public static final int PORT = 2222;
 
 //    @Inject
 //    SSHTunnelManager sSHTunnelManager;
@@ -43,8 +49,14 @@ public class SSHService {
     @Inject
     Event<SSHClientPortForwardEvent> eventSSHClientPortForwardEvent;
 
+
+    @Inject
+    Event<SshConnectionOpen> sshConnectionOpenEvent;
+
     @Inject
     Event<SshConnectionClosed> sshConnectionClosedEvent;
+
+    static Map<Session, SshConnectionOpen> session2key = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void init() throws IOException {
@@ -52,7 +64,13 @@ public class SSHService {
         sshServer.setPort(PORT);
         sshServer.setHost("0.0.0.0");
         sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
-        sshServer.setPublickeyAuthenticator((username, key, session) -> sshManager.prepareKeyForStorage(key));
+        sshServer.setPublickeyAuthenticator((username, key, session) -> {
+            SshConnectionOpen sshConnectionOpen = session2key.get(session);
+            sshConnectionOpen.setPublicKey(SSHManager.encodePublicKey((RSAPublicKey) key));
+            sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
+            session2key.remove(session);
+            return sshManager.prepareKeyForStorage(key);
+        });
         sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
             @Override
             protected boolean checkAcceptance(String request, Session session, SshdSocketAddress target) {
@@ -81,13 +99,21 @@ public class SSHService {
             //after starting, check when it is stopped
             sshServer.addSessionListener(new SessionListener() {
                 @Override
+                public void sessionCreated(Session session) {
+                    try {
+                        session2key.put(session, new SshConnectionOpen(session));
+                    } catch(Exception ex) {
+                        log.log(Level.SEVERE, "Problem with sessionCreated", ex);
+                    }
+                }
+                @Override
                 public void sessionDisconnect(Session session, int reason, String msg, String language, boolean initiator) {
-                    sshConnectionClosedEvent.fireAsync(new SshConnectionClosed());
+                    sshConnectionClosedEvent.fireAsync(new SshConnectionClosed(session));
                     SessionListener.super.sessionDisconnect(session, reason, msg, language, initiator);
                 }
             });
         } catch (IOException e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, "Problem with SSH Server", e);
         }
     }
 
