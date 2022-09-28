@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.IsoFields;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -27,7 +28,7 @@ public class IsynetMSQLConnector {
     private static final String PATIENT = "patient";
     private static final String MEDICATIONSTATEMENT = "medicationStatement";
 
-    public void insertToIsynet(Bundle parsedBundle) {
+    public void insertToIsynet(Bundle parsedBundle, Map<String, Object> connectionParameter)  {
 
         String pznToLookup = BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle);
         List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(pznToLookup);
@@ -38,7 +39,7 @@ public class IsynetMSQLConnector {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-        String connectionUrl = "jdbc:sqlserver://lhtufukeqw3tayq1.myfritz.net:1433;databaseName=WINACS;user=AP31;password=722033800;trustServerCertificate=true";
+        String connectionUrl = "jdbc:sqlserver://"+connectionParameter.get("hostname")+":"+connectionParameter.get("port")+";databaseName=WINACS;user="+connectionParameter.get("user")+";password="+connectionParameter.get("password")+";trustServerCertificate=true";
         try (Connection con = DriverManager.getConnection(connectionUrl); Statement stmt = con.createStatement()) {
 
             // deleteAllMedications(stmt);

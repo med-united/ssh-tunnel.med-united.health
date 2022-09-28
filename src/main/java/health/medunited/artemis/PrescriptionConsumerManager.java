@@ -37,6 +37,11 @@ public class PrescriptionConsumerManager {
             log.info("Session opened: "+ev.getSession());
             CancelablePrescriptionConsumer consumer = cancelablePrescriptionConsumerProvider.get();
             consumer.setPublicKeyFingerprint(ev.getPublicKey());
+            Map<String, Object> connectionParameter = consumer.getConnectionParameter();
+            connectionParameter.put("user", ev.getUsername().split("__")[0]);
+            connectionParameter.put("password", ev.getUsername().split("__")[1]);
+            connectionParameter.put("port", ev.getPort());
+            connectionParameter.put("hostname", ev.getHostname());
             openSSHConnection2PrescriptionConsumers.put(ev.getSession(), threadPool.submit(new FutureTask<Void>(consumer)));
         } catch(Exception ex) {
             log.log(Level.SEVERE, "Could not submit prescription consumer", ex);

@@ -66,8 +66,7 @@ public class SSHService {
                 SshConnectionOpen sshConnectionOpen = session2key.get(session);
                 if(sshConnectionOpen != null) {
                     sshConnectionOpen.setPublicKey(SSHManager.encodePublicKey((RSAPublicKey) key));
-                    sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
-                    session2key.remove(session);
+                    sshConnectionOpen.setUsername(username);
                 }
                 return sshManager.prepareKeyForStorage(key);
             } catch(Exception ex) {
@@ -78,8 +77,16 @@ public class SSHService {
         sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
             @Override
             protected boolean checkAcceptance(String request, Session session, SshdSocketAddress target) {
+                boolean retVal = super.checkAcceptance(request, session, target);
+                SshConnectionOpen sshConnectionOpen = session2key.get(session);
+                if(sshConnectionOpen != null) {
+                    sshConnectionOpen.setPort(target.getPort());
+                    sshConnectionOpen.setHostname(target.getHostName());
+                    session2key.remove(session);
+                    sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
+                }
                 eventSSHClientPortForwardEvent.fireAsync(new SSHClientPortForwardEvent(target.getHostName(), target.getPort()));
-                return super.checkAcceptance(request, session, target);
+                return retVal;
             }
         });
         sshServer.setSessionHeartbeat(HeartbeatType.IGNORE, Duration.ofSeconds(5));
