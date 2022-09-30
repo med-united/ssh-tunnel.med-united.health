@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
 import javax.jms.*;
+import javax.jms.IllegalStateException;
 
 import org.hl7.fhir.r4.model.Bundle;
 
@@ -131,7 +132,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
                             log.info("Prescription Consumer Interrupted e.g. by SSH Connection close. Ending.");
                             consumer.close();
                             break;
-                        } else if (e.getCause() instanceof IllegalStateRuntimeException) {
+                        } else if (e.getCause() instanceof IllegalStateRuntimeException || e.getCause() instanceof IllegalStateException) {
                             log.info("Prescription Consumer Closed e.g.: consumer was manually closed in Artemis console. Ending.");
                             break;
                         } else {
