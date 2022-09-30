@@ -129,6 +129,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
                     } catch (Exception e) {
                         if(e.getCause() != null && e.getCause().getCause() != null && e.getCause().getCause().getCause() instanceof InterruptedException) {
                             log.info("Prescription Consumer Interrupted e.g. by SSH Connection close. Ending.");
+                            consumer.close();
                             break;
                         } else if (e.getCause() instanceof IllegalStateRuntimeException) {
                             log.info("Prescription Consumer Closed e.g.: consumer was manually closed in Artemis console. Ending.");
