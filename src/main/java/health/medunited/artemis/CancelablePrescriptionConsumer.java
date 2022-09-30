@@ -9,13 +9,7 @@ import java.util.logging.Logger;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
-import javax.jms.BytesMessage;
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSConsumer;
-import javax.jms.JMSContext;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.Queue;
+import javax.jms.*;
 
 import org.hl7.fhir.r4.model.Bundle;
 
@@ -134,7 +128,10 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
                         }
                     } catch (Exception e) {
                         if(e.getCause() != null && e.getCause().getCause() != null && e.getCause().getCause().getCause() instanceof InterruptedException) {
-                            log.info("Prescription Consumer Interrupeted e.g. by SSH Connection close. Ending.");
+                            log.info("Prescription Consumer Interrupted e.g. by SSH Connection close. Ending.");
+                            break;
+                        } else if (e.getCause() instanceof IllegalStateRuntimeException) {
+                            log.info("Prescription Consumer Closed e.g.: consumer was manually closed in Artemis console. Ending.");
                             break;
                         } else {
                             log.log(Level.SEVERE, "Problem will processing message", e);
