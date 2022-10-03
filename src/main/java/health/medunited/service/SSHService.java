@@ -60,7 +60,6 @@ public class SSHService {
         SshServer sshServer = SshServer.setUpDefaultServer();
         sshServer.setPort(PORT);
         sshServer.setHost("0.0.0.0");
-        sshServer.getProperties().put("session.sftp.subsystem.job-control", "true");
         sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
         sshServer.setPublickeyAuthenticator((username, key, session) -> {
             try {
@@ -124,7 +123,7 @@ public class SSHService {
                     SessionListener.super.sessionDisconnect(session, reason, msg, language, initiator);
                 }
             });
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.log(Level.SEVERE, "Problem with SSH Server", e);
         }
     }
