@@ -124,7 +124,7 @@ public class SSHService {
                     SessionListener.super.sessionDisconnect(session, reason, msg, language, initiator);
                 }
             });
-        } catch (IOException  e) {
+        } catch (Exception  e) {
             log.log(Level.SEVERE, "Problem with SSH Server", e);
         }
     }
