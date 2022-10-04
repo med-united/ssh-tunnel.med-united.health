@@ -57,54 +57,55 @@ public class SSHService {
 
     @PostConstruct
     public void init() throws IOException {
-        SshServer sshServer = SshServer.setUpDefaultServer();
-        sshServer.setPort(PORT);
-        sshServer.setHost("0.0.0.0");
-        sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
-        sshServer.setPublickeyAuthenticator((username, key, session) -> {
-            try {
-                SshConnectionOpen sshConnectionOpen = session2key.get(session);
-                if(sshConnectionOpen != null) {
-                    sshConnectionOpen.setPublicKey(SSHManager.encodePublicKey((RSAPublicKey) key));
-                    sshConnectionOpen.setUsername(username);
-                }
-                return sshManager.prepareKeyForStorage(key);
-            } catch(Exception ex) {
-                log.log(Level.SEVERE, "Problem with PublickeyAuthenticator", ex);
-                return false;
-            }
-        });
-        sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
-            @Override
-            protected boolean checkAcceptance(String request, Session session, SshdSocketAddress target) {
-                boolean retVal = super.checkAcceptance(request, session, target);
-                SshConnectionOpen sshConnectionOpen = session2key.get(session);
-                if(sshConnectionOpen != null) {
-                    sshConnectionOpen.setPort(target.getPort());
-                    sshConnectionOpen.setHostname(target.getHostName());
-                    session2key.remove(session);
-                    sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
-                }
-                eventSSHClientPortForwardEvent.fireAsync(new SSHClientPortForwardEvent(target.getHostName(), target.getPort()));
-                return retVal;
-            }
-        });
-        sshServer.setSessionHeartbeat(HeartbeatType.IGNORE, Duration.ofSeconds(5));
-        //I want to print something when the client disconnects
-        sshServer.setSessionDisconnectHandler(new SessionDisconnectHandler() {
-            @Override
-            public boolean handleTimeoutDisconnectReason(Session session, TimeoutIndicator timeoutStatus) {
-                log.info("Client disconnected due to timeout");
-                return false;
-            }
-        });
-        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-            sshServer.setShellFactory(new ProcessShellFactory("cmd", "cmd"));
-        } else {
-            sshServer.setShellFactory(new ProcessShellFactory("/bin/sh", "/bin/sh", "-i", "-l"));
-        }
-        sshServer.setForwarderFactory(DefaultForwarderFactory.INSTANCE);
         try {
+            SshServer sshServer = SshServer.setUpDefaultServer();
+            sshServer.setPort(PORT);
+            sshServer.setHost("0.0.0.0");
+            sshServer.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
+            sshServer.setPublickeyAuthenticator((username, key, session) -> {
+                try {
+                    SshConnectionOpen sshConnectionOpen = session2key.get(session);
+                    if(sshConnectionOpen != null) {
+                        sshConnectionOpen.setPublicKey(SSHManager.encodePublicKey((RSAPublicKey) key));
+                        sshConnectionOpen.setUsername(username);
+                    }
+                    return sshManager.prepareKeyForStorage(key);
+                } catch(Exception ex) {
+                    log.log(Level.SEVERE, "Problem with PublickeyAuthenticator", ex);
+                    return false;
+                }
+            });
+            sshServer.setForwardingFilter(new AcceptAllForwardingFilter() {
+                @Override
+                protected boolean checkAcceptance(String request, Session session, SshdSocketAddress target) {
+                    boolean retVal = super.checkAcceptance(request, session, target);
+                    SshConnectionOpen sshConnectionOpen = session2key.get(session);
+                    if(sshConnectionOpen != null) {
+                        sshConnectionOpen.setPort(target.getPort());
+                        sshConnectionOpen.setHostname(target.getHostName());
+                        session2key.remove(session);
+                        sshConnectionOpenEvent.fireAsync(sshConnectionOpen);
+                    }
+                    eventSSHClientPortForwardEvent.fireAsync(new SSHClientPortForwardEvent(target.getHostName(), target.getPort()));
+                    return retVal;
+                }
+            });
+            sshServer.setSessionHeartbeat(HeartbeatType.IGNORE, Duration.ofSeconds(5));
+            //I want to print something when the client disconnects
+            sshServer.setSessionDisconnectHandler(new SessionDisconnectHandler() {
+                @Override
+                public boolean handleTimeoutDisconnectReason(Session session, TimeoutIndicator timeoutStatus) {
+                    log.info("Client disconnected due to timeout");
+                    return false;
+                }
+            });
+            if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+                sshServer.setShellFactory(new ProcessShellFactory("cmd", "cmd"));
+            } else {
+                sshServer.setShellFactory(new ProcessShellFactory("/bin/sh", "/bin/sh", "-i", "-l"));
+            }
+            sshServer.setForwarderFactory(DefaultForwarderFactory.INSTANCE);
+
             log.info("Starting SSH server on port: " + PORT);
             sshServer.start();
             //after starting, check when it is stopped
@@ -123,7 +124,7 @@ public class SSHService {
                     SessionListener.super.sessionDisconnect(session, reason, msg, language, initiator);
                 }
             });
-        } catch (Exception e) {
+        } catch (IOException  e) {
             log.log(Level.SEVERE, "Problem with SSH Server", e);
         }
     }
