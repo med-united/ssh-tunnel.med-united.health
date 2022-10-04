@@ -80,7 +80,7 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - port: 22
+    - port: 22222
       targetPort: 22
       name: ssh
   selector:
