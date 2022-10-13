@@ -2,7 +2,10 @@ package health.medunited.t2med;
 
 import javax.inject.Inject;
 
+import health.medunited.client.AuthorizationHeaderFactory;
+import io.quarkus.test.Mock;
 import org.hl7.fhir.r4.model.Bundle;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -18,7 +21,7 @@ class T2MedConnectorTest {
     @Inject
     T2MedConnector t2MedConnector;
 
-
+    @Disabled("This test requires the right t2med credentials")
     @Test
     void testCreatePrescriptionFromBundle() {
 

@@ -42,7 +42,7 @@ public class PrescriptionConsumerManager {
             connectionParameter.put("password", ev.getUsername().split("__")[1]);
             connectionParameter.put("port", ev.getPort());
             connectionParameter.put("hostname", ev.getHostname());
-            openSSHConnection2PrescriptionConsumers.put(ev.getSession(), threadPool.submit(new FutureTask<Void>(consumer)));
+            openSSHConnection2PrescriptionConsumers.put(ev.getSession(), threadPool.submit(new FutureTask<>(consumer)));
         } catch(Exception ex) {
             log.log(Level.SEVERE, "Could not submit prescription consumer", ex);
         }

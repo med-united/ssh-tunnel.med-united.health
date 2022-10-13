@@ -120,7 +120,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
                                 isynetMSQLConnector.insertToIsynet(parsedBundle, connectionParameter);
 
                             } else if (Objects.equals(message.getStringProperty(PVS_HEADER), "t2med")) {
-
+                                setT2MedCredentialsIntoSystemProperties(connectionParameter);
                                 t2MedConnector.createPrescriptionFromBundle(parsedBundle);
                             }
 
@@ -153,6 +153,17 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
         message.readBytes(byteData);
         message.reset();
         return new String(byteData);
+    }
+
+    private void setT2MedCredentialsIntoSystemProperties(Map<String, Object> connectionParameter) {
+        System.setProperty("t2med.username", connectionParameter.get("user").toString());
+        System.setProperty("t2med.password", connectionParameter.get("password").toString());
+        System.setProperty("quarkus.rest-client.T2MedClient.url",
+                "https://"
+                        + connectionParameter.get("hostname").toString()
+                        + ":"
+                        + connectionParameter.get("port").toString());
+
     }
 
 }
