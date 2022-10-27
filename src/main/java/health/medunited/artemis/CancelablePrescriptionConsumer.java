@@ -159,7 +159,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
         System.setProperty("t2med.username", connectionParameter.get("user").toString());
         System.setProperty("t2med.password", connectionParameter.get("password").toString());
         System.setProperty("quarkus.rest-client.T2MedClient.url",
-                "https://"
+                "http://"
                         + connectionParameter.get("hostname").toString()
                         + ":"
                         + connectionParameter.get("port").toString());
