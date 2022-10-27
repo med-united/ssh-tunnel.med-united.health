@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.IsoFields;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -227,6 +228,10 @@ public class IsynetMSQLConnector {
         int patientNumber = checkIfPatientExistsInTheSystem(parsedBundle, stmt); // check if patient was created
         if (patientNumber > -1) {
             log.info("Patient was successfully created in the Db.");
+            while (!counterTableWasUpdated(scheinNummer, patientNummer, stmt)) {
+                updateCounterTable(scheinNummer, patientNummer, stmt);
+            }
+            log.info("Db counter successfully updated.");
             return patientNumber;
         } else {
             log.info("Some problem occurred and the patient was not created.");
@@ -274,6 +279,38 @@ public class IsynetMSQLConnector {
             }
         }
         return false;
+    }
+
+    public void updateCounterTable(int scheinNummer, int patientNummer, Statement stmt) throws SQLException {
+
+        String SQL_updateCounter = "" +
+                "SET XACT_ABORT ON\n" + // in case of an error, rollback will be issued automatically
+                "BEGIN TRANSACTION\n" +
+                "UPDATE [dbo].[Counter] SET ID = " + scheinNummer + " WHERE [Key] = 'Schein.Nummer'\n" +
+                "UPDATE [dbo].[Counter] SET ID = " + patientNummer + " WHERE [Key] = 'Patient.Nummer'\n" +
+                "COMMIT TRANSACTION";
+
+        stmt.execute(SQL_updateCounter);
+    }
+
+    public boolean counterTableWasUpdated(int scheinNummer, int patientNummer, Statement stmt) throws SQLException {
+
+        String SQL_checkIfCounterTableWasUpdated = "SELECT * FROM Counter WHERE [Key] IN ('Schein.Nummer', 'Patient.Nummer')";
+        ResultSet rs = stmt.executeQuery(SQL_checkIfCounterTableWasUpdated);
+        boolean scheinNummerUpdated = false;
+        boolean patientNummerUpdated = false;
+        while (rs.next()) {
+            if (Objects.equals(rs.getString("Key"), "Schein.Nummer")) {
+                if (String.valueOf(scheinNummer).equals(rs.getString("ID"))) {
+                    scheinNummerUpdated = true;
+                }
+            } else if (Objects.equals(rs.getString("Key"), "Patient.Nummer")) {
+                if (String.valueOf(patientNummer).equals(rs.getString("ID"))) {
+                    patientNummerUpdated = true;
+                }
+            }
+        }
+        return scheinNummerUpdated && patientNummerUpdated;
     }
 
     public void createMedication(List<String> tableEntry, int patientNummer, Bundle parsedBundle, Statement stmt) throws SQLException {
@@ -529,5 +566,9 @@ public class IsynetMSQLConnector {
         stmt.execute(SQL_deleteKrablLink);
         stmt.execute(SQL_deleteSchein);
         stmt.execute(SQL_deleteLock);
+        String SQL_updateCounterScheinNummer = "UPDATE [dbo].[Counter] SET ID = " + 40 + " WHERE [Key] = 'Schein.Nummer'";
+        String SQL_updateCounterPatientNummer = "UPDATE [dbo].[Counter] SET ID = " + 38 + " WHERE [Key] = 'Patient.Nummer'";
+        stmt.execute(SQL_updateCounterScheinNummer);
+        stmt.execute(SQL_updateCounterPatientNummer);
     }
 }
