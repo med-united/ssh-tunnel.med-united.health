@@ -18,7 +18,7 @@ public class AuthorizationHeaderFactory implements ClientHeadersFactory {
         String password = System.getProperty("t2med.password");
         String originalInput = user + ":" + password;
         String encodedString = Base64.getEncoder().encodeToString(originalInput.getBytes());
-        result.add("Authorization", "Basic " + encodedString);
+        result.add("Authorization", "Basic " + "dDJ1c2VyOg==");
         return result;
     }
 }

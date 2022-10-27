@@ -1,5 +1,6 @@
 package health.medunited.t2med;
 
+import java.net.URL;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -10,6 +11,7 @@ import javax.json.JsonObject;
 import javax.json.JsonValue;
 
 import health.medunited.service.BundleParser;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.hl7.fhir.r4.model.Bundle;
 
@@ -27,7 +29,15 @@ public class T2MedConnector {
     @RestClient
     T2MedClient t2MedClient;
 
-    public void createPrescriptionFromBundle(Bundle parsedBundle) {
+    public void createPrescriptionFromBundle(Bundle parsedBundle, String connectorUrl) {
+
+        try {
+            t2MedClient = RestClientBuilder.newBuilder()
+                    .baseUrl(new URL(connectorUrl))
+                    .build(T2MedClient.class);
+        } catch (Exception e) {
+            log.severe("Error creating T2MedClient: " + e.getMessage());
+        }
 
         JsonObject loginResponseJson = t2MedClient.login();
 
