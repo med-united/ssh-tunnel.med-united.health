@@ -1,5 +1,6 @@
 package health.medunited.t2med;
 
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.logging.Logger;
 
@@ -35,7 +36,7 @@ public class T2MedConnector {
             t2MedClient = RestClientBuilder.newBuilder()
                     .baseUrl(new URL(connectorUrl))
                     .build(T2MedClient.class);
-        } catch (Exception e) {
+        } catch (MalformedURLException e) {
             log.severe("Error creating T2MedClient: " + e.getMessage());
         }
 
