@@ -121,7 +121,8 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
 
                             } else if (Objects.equals(message.getStringProperty(PVS_HEADER), "t2med")) {
                                 setT2MedCredentialsIntoSystemProperties(connectionParameter);
-                                t2MedConnector.createPrescriptionFromBundle(parsedBundle);
+                                t2MedConnector.createPrescriptionFromBundle(parsedBundle,
+                                        "https://" + connectionParameter.get("hostname").toString() + ":" + connectionParameter.get("port").toString());
                             }
 
                         } else {

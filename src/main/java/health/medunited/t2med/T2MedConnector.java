@@ -1,5 +1,7 @@
 package health.medunited.t2med;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -9,7 +11,9 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
+import health.medunited.client.AuthorizationService;
 import health.medunited.service.BundleParser;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.hl7.fhir.r4.model.Bundle;
 
@@ -27,9 +31,19 @@ public class T2MedConnector {
     @RestClient
     T2MedClient t2MedClient;
 
-    public void createPrescriptionFromBundle(Bundle parsedBundle) {
+    public void createPrescriptionFromBundle(Bundle parsedBundle, String connectorUrl) {
 
-        JsonObject loginResponseJson = t2MedClient.login();
+        try {
+            t2MedClient = RestClientBuilder.newBuilder()
+                    .baseUrl(new URL(connectorUrl))
+                    .build(T2MedClient.class);
+        } catch (MalformedURLException e) {
+            log.severe("Error creating T2MedClient: " + e.getMessage());
+        }
+
+        String authToken = AuthorizationService.getAuthorizationHeader();
+
+        JsonObject loginResponseJson = t2MedClient.login(authToken);
 
         log.info("Login successfully? " + loginResponseJson.getBoolean("successful"));
 
@@ -45,7 +59,7 @@ public class T2MedConnector {
                         )
                 ).add("findOnlyAssigned", true).build();
 
-        JsonObject doctorReferenceResponseJson = t2MedClient.getDoctorRole(findVerwaltJson);
+        JsonObject doctorReferenceResponseJson = t2MedClient.getDoctorRole(authToken, findVerwaltJson);
 
         String lanr = BundleParser.getLanr(PRACTITIONER, parsedBundle);
         // Select-Object -ExpandProperty "benutzerBearbeitenDTO" | Select-Object -ExpandProperty "arztrollen" | Select-Object -ExpandProperty "arztrolle" | Where-Object -Property lanr -eq -Value $lanr | Select-Object -ExpandProperty "ref" | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
@@ -55,7 +69,7 @@ public class T2MedConnector {
 
         JsonObject searchPatient = Json.createObjectBuilder().add("searchString", BundleParser.getLastName(PATIENT, parsedBundle) + ", " + BundleParser.getFirstName(PATIENT, parsedBundle)).build();
 
-        JsonObject searchPatientResponseJson = t2MedClient.filterPatients(searchPatient);
+        JsonObject searchPatientResponseJson = t2MedClient.filterPatients(authToken, searchPatient);
 
         // $patientReference = $response | Select-Object -ExpandProperty "patientSearchResultDTOS" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
         String patientReference = searchPatientResponseJson.getJsonArray("patientSearchResultDTOS").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
@@ -64,14 +78,14 @@ public class T2MedConnector {
 
         JsonObject searchCase = Json.createObjectBuilder().add("objectId", Json.createObjectBuilder().add("id", patientReference)).build();
 
-        JsonObject searchCaseResponseJson = t2MedClient.getCase(searchCase);
+        JsonObject searchCaseResponseJson = t2MedClient.getCase(authToken, searchCase);
 
         // $caseReference = $response | Select-Object -ExpandProperty "zeilenMaps" | Select-Object -ExpandProperty "AKTUELL" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" | Select-Object -ExpandProperty "id"
         String caseReference = searchCaseResponseJson.getJsonObject("zeilenMaps").getJsonArray("AKTUELL").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
 
         log.info("Case Reference: " + caseReference);
 
-        JsonObject caseLocationResponseJson = t2MedClient.getCaseLocation();
+        JsonObject caseLocationResponseJson = t2MedClient.getCaseLocation(authToken);
         // $caseLocationReference = $response | Select-Object -ExpandProperty "behandlungsorte" | Select-Object -ExpandProperty "ref" -First 1 | Select-Object -ExpandProperty "objectId" -First 1 | Select-Object -ExpandProperty "id"
         String caseLocationReference = caseLocationResponseJson.getJsonArray("behandlungsorte").get(0).asJsonObject().getJsonObject("ref").getJsonObject("objectId").getString("id");
         log.info("Case Location Reference: " + caseLocationReference);
@@ -79,7 +93,7 @@ public class T2MedConnector {
         String pzn = BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle);
 
         JsonObject amdbSearchQueryJson = buildAmdbSearchQueryJson(patientReference, doctorRoleReference, caseReference, caseLocationReference, userReference, pzn);
-        JsonObject amdbResponseJson = t2MedClient.searchMedication(amdbSearchQueryJson);
+        JsonObject amdbResponseJson = t2MedClient.searchMedication(authToken, amdbSearchQueryJson);
 
         // $medicationName = $response | Select-Object -ExpandProperty "entries" | Select-Object -ExpandProperty "packung" -First 1 | Select-Object -ExpandProperty "name"
         JsonObject medicationPacking = amdbResponseJson.getJsonArray("entries").get(0).asJsonObject().getJsonObject("packung");
@@ -132,7 +146,7 @@ public class T2MedConnector {
                 0,
                 0
         );
-        JsonObject eRezeptResponseJson = t2MedClient.createAndSavePrescription(eRezeptJson);
+        JsonObject eRezeptResponseJson = t2MedClient.createAndSavePrescription(authToken, eRezeptJson);
     }
 
     private JsonObject buildAmdbSearchQueryJson(String patientReference,

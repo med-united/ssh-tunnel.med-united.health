@@ -1,51 +1,47 @@
 package health.medunited.client;
 
 import javax.json.JsonObject;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
+import javax.ws.rs.*;
 
-import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.apache.http.HttpHeaders;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @Path("/")
 @RegisterRestClient
-@RegisterClientHeaders(AuthorizationHeaderFactory.class)
 public interface T2MedClient {
 
     @GET
     @Path("/aps/rest/benutzer/login/authenticate")
-    JsonObject login();
+    JsonObject login(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization);
 
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/benutzer/verwalten/find")
-    JsonObject getDoctorRole(JsonObject findVerwalt);
+    JsonObject getDoctorRole(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization, JsonObject findVerwalt);
 
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/praxis/patient/liste/pagefilter")
-    JsonObject filterPatients(JsonObject searchPatient);
+    JsonObject filterPatients(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization, JsonObject searchPatient);
 
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/praxis/behandlungsfaelle/faellefuerpatientinkrementell")
-    JsonObject getCase(JsonObject searchCase);
+    JsonObject getCase(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization, JsonObject searchCase);
 
     @GET   
     @Consumes("application/json")
     @Path("/aps/rest/praxis/praxisstruktur/kontextauswaehlen/arztrollenbehandlungorte")
-    JsonObject getCaseLocation();
+    JsonObject getCaseLocation(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization);
 
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/verordnung/rezept/ausstellen/amdb/page")
-    JsonObject searchMedication(JsonObject amdbSearchQuery);
+    JsonObject searchMedication(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization, JsonObject amdbSearchQuery);
 
     @POST
     @Consumes("application/json")
     @Path("/aps/rest/verordnung/rezept/ausstellen/saveerezepte")
-    JsonObject createAndSavePrescription(JsonObject eRezept);
+    JsonObject createAndSavePrescription(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization, JsonObject eRezept);
 
 }

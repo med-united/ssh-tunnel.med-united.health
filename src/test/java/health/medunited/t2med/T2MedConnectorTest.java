@@ -2,8 +2,6 @@ package health.medunited.t2med;
 
 import javax.inject.Inject;
 
-import health.medunited.client.AuthorizationHeaderFactory;
-import io.quarkus.test.Mock;
 import org.hl7.fhir.r4.model.Bundle;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -33,7 +31,7 @@ class T2MedConnectorTest {
 
         Bundle parsed = parser.parseResource(Bundle.class, input);
 
-        t2MedConnector.createPrescriptionFromBundle(parsed);
+        t2MedConnector.createPrescriptionFromBundle(parsed, "fakeUrl");
     }
 
     private String prepareInputBundle() {
