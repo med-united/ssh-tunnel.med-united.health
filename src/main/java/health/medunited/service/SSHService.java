@@ -125,7 +125,7 @@ public class SSHService {
                 }
             });
         } catch (Exception  e) {
-            log.log(Level.SEVERE, "Problem with SSH Server", e);
+            log.log(Level.SEVERE, "There is a problem with SSH Server", e);
         }
     }
 
