@@ -41,7 +41,7 @@ public class MedicationDbLookup {
         return tableEntry.get(2);
     }
 
-    public static String getNorm(List<String> tableEntry) {
+    public static String getPackageSize(List<String> tableEntry) {
         return tableEntry.get(3);
     }
 

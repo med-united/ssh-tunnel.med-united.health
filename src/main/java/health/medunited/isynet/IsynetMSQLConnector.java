@@ -77,7 +77,7 @@ public class IsynetMSQLConnector {
             log.info("[ MEDICATION OBTAINED FROM DB ] PZN: " + pznToLookup +
                     " // name: " + MedicationDbLookup.getMedicationName(tableEntry) +
                     " // quantity: " + MedicationDbLookup.getQuantity(tableEntry) +
-                    " // norm: " + MedicationDbLookup.getNorm(tableEntry) +
+                    " // package size: " + MedicationDbLookup.getPackageSize(tableEntry) +
                     " // AVP: " + MedicationDbLookup.getAVP(tableEntry) +
                     " // ATC: " + MedicationDbLookup.getATC(tableEntry) +
                     " // composition: " + MedicationDbLookup.getComposition(tableEntry));
@@ -321,6 +321,12 @@ public class IsynetMSQLConnector {
         String mittags = dosage.length > 1 ? dosage[1] : "0";
         String abends = dosage.length > 2 ? dosage[2] : "0";
         String nachts = dosage.length > 3 ? dosage[3] : "0";
+        String packageSize = MedicationDbLookup.getPackageSize(tableEntry);
+        if (!Objects.equals(packageSize, "")) {
+            packageSize = packageSize.replace("N", "");
+        }
+        String atcCodeMeanings = MedicationDbLookup.getComposition(tableEntry).replaceAll("\\n+\\d*\\t", " ");
+        log.info("atc code meanings: " + atcCodeMeanings);
 
         DateTimeFormatter dtf1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS");
         DateTimeFormatter dtf2 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
@@ -354,7 +360,7 @@ public class IsynetMSQLConnector {
                 "[Hilfsmittelpositionsnummer])" +
                 "VALUES (" + medikamentId + ", " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + ", N'" +
                 MedicationDbLookup.getMedicationName(tableEntry) + "', N'', N'" + MedicationDbLookup.getATC(tableEntry) +
-                "', N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'', N'', N'', N'', N'', N'', 1, 1, 1665, NULL," +
+                "', N'" + MedicationDbLookup.getComposition(tableEntry) + "', N'', N'', N'', N'', N'', N'', " + packageSize + ", 1, 1665, NULL," +
                 " NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1'," +
                 "CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] OFF\n" +
@@ -534,15 +540,15 @@ public class IsynetMSQLConnector {
 
     public void deleteAllMedications(Statement stmt) throws SQLException {
 
-        String SQL_deleteVerordnungsmodulMedikamentDbo = "DELETE FROM VerordnungsmodulMedikamentDbo WHERE Id >= 0";
-        String SQL_deleteVerordnungsmodulRezepturWirkstoffDbo = "DELETE FROM VerordnungsmodulRezepturWirkstoffDbo WHERE Id >= 0";
-        String SQL_deleteVerordnungsmodulMedikationDbo = "DELETE FROM VerordnungsmodulMedikationDbo WHERE Id >= 0";
-        String SQL_deleteVerordnungsmodulRezeptDbo = "DELETE FROM VerordnungsmodulRezeptDbo WHERE Id >= 0";
-        String SQL_deleteVerordnungsmodulDosierungDbo = "DELETE FROM VerordnungsmodulDosierungDbo WHERE Id >= 0";
-        String SQL_deleteScheinMed = "DELETE FROM ScheinMed WHERE Nummer >= 0";
-        // String SQL_deleteKrablLink = "DELETE FROM KrablLink WHERE Nummer >= 0"; // might also delete information related to patient insertion
-        String SQL_deleteKrablLinkID = "DELETE FROM KrablLinkID WHERE Nummer >= 0";
-        String SQL_deleteScheinMedDaten = "DELETE FROM ScheinMedDaten WHERE Nummer >= 0";
+        String SQL_deleteVerordnungsmodulMedikamentDbo = "DELETE FROM VerordnungsmodulMedikamentDbo WHERE Id >= 314";
+        String SQL_deleteVerordnungsmodulRezepturWirkstoffDbo = "DELETE FROM VerordnungsmodulRezepturWirkstoffDbo WHERE Id >= 314";
+        String SQL_deleteVerordnungsmodulMedikationDbo = "DELETE FROM VerordnungsmodulMedikationDbo WHERE Id >= 314";
+        String SQL_deleteVerordnungsmodulRezeptDbo = "DELETE FROM VerordnungsmodulRezeptDbo WHERE PatientId >= 39";
+        String SQL_deleteVerordnungsmodulDosierungDbo = "DELETE FROM VerordnungsmodulDosierungDbo WHERE Id >= 314";
+        String SQL_deleteScheinMed = "DELETE FROM ScheinMed WHERE Nummer >= 314";
+        // String SQL_deleteKrablLink = "DELETE FROM KrablLink WHERE PatientNummer >= 39"; // might also delete information related to patient insertion
+        String SQL_deleteKrablLinkID = "DELETE FROM KrablLinkID WHERE PatientNummer >= 39";
+        String SQL_deleteScheinMedDaten = "DELETE FROM ScheinMedDaten WHERE Nummer >= 363";
         stmt.execute(SQL_deleteScheinMedDaten);
         stmt.execute(SQL_deleteKrablLinkID);
         // stmt.execute(SQL_deleteKrablLink); // might also delete information related to patient insertion
@@ -556,11 +562,11 @@ public class IsynetMSQLConnector {
 
     public void deleteAllPatients(Statement stmt) throws SQLException {
 
-        String SQL_deletePatient = "DELETE FROM Patient WHERE Nummer >= 0";
-        String SQL_deleteTagProtokoll = "DELETE FROM TagProtokoll WHERE PatientNummer >= 0";
-        String SQL_deleteKrablLink = "DELETE FROM KrablLink WHERE PatientNummer >= 0";
-        String SQL_deleteSchein = "DELETE FROM Schein WHERE Nummer >= 0";
-        String SQL_deleteLock = "DELETE FROM Lock WHERE RecordNummer >= 0";
+        String SQL_deletePatient = "DELETE FROM Patient WHERE Nummer >= 39";
+        String SQL_deleteTagProtokoll = "DELETE FROM TagProtokoll WHERE PatientNummer >= 39";
+        String SQL_deleteKrablLink = "DELETE FROM KrablLink WHERE PatientNummer >= 39";
+        String SQL_deleteSchein = "DELETE FROM Schein WHERE PatientNummer >= 39";
+        String SQL_deleteLock = "DELETE FROM Lock WHERE RecordNummer >= 39";
         stmt.execute(SQL_deletePatient);
         stmt.execute(SQL_deleteTagProtokoll);
         stmt.execute(SQL_deleteKrablLink);
