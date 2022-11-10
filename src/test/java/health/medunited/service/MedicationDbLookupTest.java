@@ -1,5 +1,6 @@
 package health.medunited.service;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -8,10 +9,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MedicationDbLookupTest {
 
+    List<String> tableEntryForTesting = Arrays.asList("1390624", "17952199", "30 ST", "N1", "16.99", "Nifedipin Denk 20mg Retard", "C08CA05", "3835\\tNifedipin");
+
     @Test
     void testSuccessfulLookupMedicationByPZN() {
         List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199");
         assertNotNull(tableEntry);
+        assertEquals(tableEntry, tableEntryForTesting);
     }
     @Test
     void testUnsuccessfulLookupMedicationByPZN() {
@@ -20,38 +24,26 @@ public class MedicationDbLookupTest {
     }
     @Test
     void testGetMedicationName() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199"); // TODO: remove from here
-        assert tableEntry != null;
-        assertEquals("Nifedipin Denk 20mg Retard", MedicationDbLookup.getMedicationName(tableEntry));
+        assertEquals("Nifedipin Denk 20mg Retard", MedicationDbLookup.getMedicationName(tableEntryForTesting));
     }
     @Test
     void testGetQuantity() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199"); // TODO: remove from here
-        assert tableEntry != null;
-        assertEquals("30 ST", MedicationDbLookup.getQuantity(tableEntry));
+        assertEquals("30 ST", MedicationDbLookup.getQuantity(tableEntryForTesting));
     }
     @Test
     void testGetPackageSize() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199"); // TODO: remove from here
-        assert tableEntry != null;
-        assertEquals("N1", MedicationDbLookup.getPackageSize(tableEntry));
+        assertEquals("N1", MedicationDbLookup.getPackageSize(tableEntryForTesting));
     }
     @Test
     void testGetAVP() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199"); // TODO: remove from here
-        assert tableEntry != null;
-        assertEquals("16.99", MedicationDbLookup.getAVP(tableEntry));
+        assertEquals("16.99", MedicationDbLookup.getAVP(tableEntryForTesting));
     }
     @Test
     void testGetATC() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199"); // TODO: remove from here
-        assert tableEntry != null;
-        assertEquals("C08CA05", MedicationDbLookup.getATC(tableEntry));
+        assertEquals("C08CA05", MedicationDbLookup.getATC(tableEntryForTesting));
     }
     @Test
     void testGetComposition() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199"); // TODO: remove from here
-        assert tableEntry != null;
-        assertEquals("3835\\tNifedipin", MedicationDbLookup.getComposition(tableEntry));
+        assertEquals("3835\\tNifedipin", MedicationDbLookup.getComposition(tableEntryForTesting));
     }
 }
