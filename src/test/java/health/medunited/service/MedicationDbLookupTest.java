@@ -9,12 +9,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MedicationDbLookupTest {
 
-    List<String> tableEntryForTesting = Arrays.asList("1390624", "17952199", "30 ST", "N1", "16.99", "Nifedipin Denk 20mg Retard", "C08CA05", "3835\\tNifedipin");
+    List<String> tableEntryForTesting = Arrays.asList("384016", "2135106", "2X15 ST", "N1", "16.52", "Kalinor", "A12BA30", "11288\\tCitronensäure; wasserfrei\\n10441\\tKalium citrat 1-Wasser\\n10455\\tKalium hydrogencarbonat", "BTA", "Brausetabletten", "Desma GmbH");
 
     @Test
     void testSuccessfulLookupMedicationByPZN() {
-        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("17952199");
+        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("2135106");
         assertNotNull(tableEntry);
+        assertTrue(tableEntry.size() == 11);
         assertEquals(tableEntry, tableEntryForTesting);
     }
     @Test
@@ -24,11 +25,11 @@ public class MedicationDbLookupTest {
     }
     @Test
     void testGetMedicationName() {
-        assertEquals("Nifedipin Denk 20mg Retard", MedicationDbLookup.getMedicationName(tableEntryForTesting));
+        assertEquals("Kalinor", MedicationDbLookup.getMedicationName(tableEntryForTesting));
     }
     @Test
     void testGetQuantity() {
-        assertEquals("30 ST", MedicationDbLookup.getQuantity(tableEntryForTesting));
+        assertEquals("2X15 ST", MedicationDbLookup.getQuantity(tableEntryForTesting));
     }
     @Test
     void testGetPackageSize() {
@@ -36,14 +37,26 @@ public class MedicationDbLookupTest {
     }
     @Test
     void testGetAVP() {
-        assertEquals("16.99", MedicationDbLookup.getAVP(tableEntryForTesting));
+        assertEquals("16.52", MedicationDbLookup.getAVP(tableEntryForTesting));
     }
     @Test
     void testGetATC() {
-        assertEquals("C08CA05", MedicationDbLookup.getATC(tableEntryForTesting));
+        assertEquals("A12BA30", MedicationDbLookup.getATC(tableEntryForTesting));
     }
     @Test
     void testGetComposition() {
-        assertEquals("3835\\tNifedipin", MedicationDbLookup.getComposition(tableEntryForTesting));
+        assertEquals("11288\\tCitronensäure; wasserfrei\\n10441\\tKalium citrat 1-Wasser\\n10455\\tKalium hydrogencarbonat", MedicationDbLookup.getComposition(tableEntryForTesting));
+    }
+    @Test
+    void testGetPharmaceuticalFormCode() {
+        assertEquals("BTA", MedicationDbLookup.getPharmaceuticalFormCode(tableEntryForTesting));
+    }
+    @Test
+    void testGetPharmaceuticalFormText() {
+        assertEquals("Brausetabletten", MedicationDbLookup.getPharmaceuticalFormText(tableEntryForTesting));
+    }
+    @Test
+    void testGetManufacturer() {
+        assertEquals("Desma GmbH", MedicationDbLookup.getManufacturer(tableEntryForTesting));
     }
 }
