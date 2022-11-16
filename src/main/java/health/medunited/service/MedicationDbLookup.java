@@ -57,6 +57,18 @@ public class MedicationDbLookup {
         return tableEntry.get(7);
     }
 
+    public static String getPharmaceuticalFormCode(List<String> tableEntry) {
+        return tableEntry.get(8);
+    }
+
+    public static String getPharmaceuticalFormText(List<String> tableEntry) {
+        return tableEntry.get(9);
+    }
+
+    public static String getManufacturer(List<String> tableEntry) {
+        return tableEntry.get(10);
+    }
+
     public InputStream getFileAsIOStream(final String fileName) {
         InputStream ioStream = this.getClass()
                 .getClassLoader()
