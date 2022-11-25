@@ -337,21 +337,27 @@ public class IsynetMSQLConnector {
         log.info("package size: " + packageSize);
 
         String atcCode = MedicationDbLookup.getATC(tableEntry);
+        String anatomieKlasse;
         if (Objects.equals(atcCode, "")) {
             atcCode = "NULL";
+            anatomieKlasse = "N''";
         } else {
-            atcCode = "N'" + MedicationDbLookup.getATC(tableEntry)+ "'";
+            atcCode = "N'" + MedicationDbLookup.getATC(tableEntry) + "'";
+            anatomieKlasse = "N'" + MedicationDbLookup.getATC(tableEntry) + "'";
         }
         log.info("atc code: " + atcCode);
 
         String medicationIngredients = MedicationDbLookup.getComposition(tableEntry);
+        String wirkstoff;
         if (!Objects.equals(medicationIngredients, "")) {
             medicationIngredients = medicationIngredients.replaceAll("[\\\\n]*\\d+\\\\t*", "   ");
             medicationIngredients = medicationIngredients.trim();
             medicationIngredients = medicationIngredients.replaceAll("   ", " und ");
             medicationIngredients = "N'" + medicationIngredients + "'";
+            wirkstoff = medicationIngredients;
         } else {
             medicationIngredients = "NULL";
+            wirkstoff = "N''";
         }
         log.info("medication ingredients: " + medicationIngredients);
 
@@ -405,7 +411,7 @@ public class IsynetMSQLConnector {
                 "[WirkstaerkeWert], [WirkstaerkeEinheit], [WirkstaerkeEinheitCode], " +
                 "[ProduktmengeWert], [ProduktmengeEinheit], [ProduktmengeEinheitCode], " +
                 "[MedikamentDbo_Id])" +
-                "VALUES (" + verordnungsmodulRezepturWirkstoffId + ", NULL, NULL, " + medicationIngredients +
+                "VALUES (" + verordnungsmodulRezepturWirkstoffId + ", NULL, NULL, " + wirkstoff +
                 ", N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'AuTro', N'1', " + medikamentId + ")\n" +
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] OFF\n" +
 
@@ -507,11 +513,11 @@ public class IsynetMSQLConnector {
                 "[NormGesamtzuzahlung], [Verordnungseinschraenkung], [Verordnungsausschluss], [VOAusschlussAnlage3])" +
                 "VALUES (" + scheinMedDatenNummer + ", N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + "', N'', 1, N'" +
                 MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
-                "', N'', " + avp + ", 0.0000, 0.0000, " + atcCode + ", N'" + MedicationDbLookup.getManufacturer(tableEntry) + "', " +
-                medicationIngredients + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
+                "', N'', " + avp + ", 0.0000, 0.0000, " + anatomieKlasse + ", N'" + MedicationDbLookup.getManufacturer(tableEntry) + "', " +
+                wirkstoff + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
                 "1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, " +
                 "0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), " +
-                "0, 0, N'', N'', 0, N'', " + medicationIngredients + ", 0, 0, 0.0000, 0, 0, 0)\n" +
+                "0, 0, N'', N'', 0, N'', " + wirkstoff + ", 0, 0, 0.0000, 0, 0, 0)\n" +
                 "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] OFF\n" +
 
                 // VerordnungsmodulDosierungDbo table ----------------------------------------------------------------------------------
