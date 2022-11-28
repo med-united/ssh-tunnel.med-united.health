@@ -7,6 +7,8 @@ import java.util.Scanner;
 
 public class MedicationDbLookup {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MedicationDbLookup.class);
+
     public static List<String> lookupMedicationByPZN(String pznToLookup) {
         boolean found = false;
 
@@ -28,7 +30,7 @@ public class MedicationDbLookup {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("Error while reading medicationDatabase.csv", e);
         }
         return null;
     }
