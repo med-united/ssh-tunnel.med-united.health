@@ -16,13 +16,19 @@ public class MedicationDbLookup {
             MedicationDbLookup instance = new MedicationDbLookup();
             InputStream is = instance.getFileAsIOStream("medicationDatabase.csv");
 
+            //check if the file is empty
+            if (is.available() == 0) {
+                log.error("The medication database is empty.");
+                return null;
+            }
+
             Scanner scanner = new Scanner(is);
             scanner.useDelimiter("[\n]");
 
             while(scanner.hasNext() && !found) {
                 String[] myArray = scanner.next().split(",");
                 List<String> tableEntry = Arrays.asList(myArray);
-                // System.out.println(tableEntry);
+                System.out.println(tableEntry);
                 String pznFound = tableEntry.get(1);
 
                 if (pznFound.equals(pznToLookup)) {
