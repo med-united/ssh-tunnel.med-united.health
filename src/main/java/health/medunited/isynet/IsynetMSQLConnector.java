@@ -1,18 +1,11 @@
 package health.medunited.isynet;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.IsoFields;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -349,17 +342,44 @@ public class IsynetMSQLConnector {
 
         String medicationIngredients = MedicationDbLookup.getComposition(tableEntry);
         String wirkstoff;
+        String atcLangText = "";
+        String allIngredientsString = "";
+        List<String> allIngredientsList = new ArrayList<>();
         if (!Objects.equals(medicationIngredients, "")) {
             medicationIngredients = medicationIngredients.replaceAll("[\\\\n]*\\d+\\\\t*", "   ");
             medicationIngredients = medicationIngredients.trim();
             medicationIngredients = medicationIngredients.replaceAll("   ", " und ");
+
+            allIngredientsString = "('" + medicationIngredients.replaceAll(" und ", "'), ('") + "')";
+            allIngredientsList = Arrays.asList(medicationIngredients.split(" und ", -1));
             medicationIngredients = "N'" + medicationIngredients + "'";
-            wirkstoff = medicationIngredients;
+            if (allIngredientsList.size() > 1) {
+                wirkstoff = "N'Kombinationspräparat mit mehreren Wirkstoffen'";
+                for (int i = 0; i < allIngredientsList.size(); i++) {
+                    String ingredientNameSimplified = allIngredientsList.get(i);
+                    if (ingredientNameSimplified.contains(" ")) {
+                        String[] arr = ingredientNameSimplified.split(" ");
+                        ingredientNameSimplified = arr[0];
+                        atcLangText += ingredientNameSimplified + " und ";
+                    }
+                    if (i == allIngredientsList.size() - 1) {
+                        atcLangText += ingredientNameSimplified;
+                    }
+                }
+                atcLangText = "N'" + atcLangText + "'";
+            } else {
+                wirkstoff = medicationIngredients;
+                atcLangText = wirkstoff;
+            }
         } else {
             medicationIngredients = "NULL";
             wirkstoff = "N''";
+            atcLangText = "N''";
         }
         log.info("medication ingredients: " + medicationIngredients);
+        log.info("allIngredients: " + allIngredientsList);
+        log.info("allIngredients size: " + allIngredientsList.size());
+        log.info("allIngredients string: " + allIngredientsString);
 
         String avp = MedicationDbLookup.getAVP(tableEntry);
         if (Objects.equals(avp, "")) {
@@ -405,15 +425,36 @@ public class IsynetMSQLConnector {
                 "CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] OFF\n" +
 
+                "DECLARE @idWirkstoff INT = " + verordnungsmodulRezepturWirkstoffId + ";" +
+                "IF (" + allIngredientsList.size() + "> 0)\n" +
+
+                "DECLARE @MyList TABLE (Value NVARCHAR(50))\n" +
+                "INSERT INTO @MyList (Value) VALUES " + allIngredientsString + ";\n" +
+                "DECLARE @value VARCHAR(50)\n" +
+                "DECLARE db_cursor CURSOR FOR\n" +
+                "SELECT Value FROM @MyList\n" +
+                "OPEN db_cursor\n" +
+                "FETCH NEXT FROM db_cursor INTO @value\n" +
+                "WHILE @@FETCH_STATUS = 0\n" +
+
+                "BEGIN\n" +
+
                 // VerordnungsmodulRezepturWirkstoffDbo table (Prescription module active ingredient table) -------------------------------
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ON\n" +
                 "INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] ([Id], [AtcCode], [AtcCodeBedeutung], [Freitext], " +
                 "[WirkstaerkeWert], [WirkstaerkeEinheit], [WirkstaerkeEinheitCode], " +
                 "[ProduktmengeWert], [ProduktmengeEinheit], [ProduktmengeEinheitCode], " +
                 "[MedikamentDbo_Id])" +
-                "VALUES (" + verordnungsmodulRezepturWirkstoffId + ", NULL, NULL, " + wirkstoff +
-                ", N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'AuTro', N'1', " + medikamentId + ")\n" +
+                "VALUES (" + "@idWirkstoff" + ", NULL, NULL, " + "@value" +
+                ", N'599', N'Milligramm', N'mg', CAST(1.00 AS Decimal(18, 2)), N'FiTab', N'1', " + medikamentId + ")\n" +
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezepturWirkstoffDbo] OFF\n" +
+
+                "SET @idWirkstoff = @idWirkstoff + 1;\n" +
+                "FETCH NEXT FROM db_cursor INTO @value\n" +
+
+                "END\n" +
+                "CLOSE db_cursor\n" +
+                "DEALLOCATE db_cursor\n" +
 
                 // VerordnungsmodulRezeptDbo table (Prescription module recipe table) -----------------------------------------------------
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulRezeptDbo] ON\n" +
@@ -517,7 +558,7 @@ public class IsynetMSQLConnector {
                 wirkstoff + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
                 "1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, " +
                 "0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), " +
-                "0, 0, N'', N'', 0, N'', " + wirkstoff + ", 0, 0, 0.0000, 0, 0, 0)\n" +
+                "0, 0, N'', N'', 0, N'', " + atcLangText + ", 0, 0, 0.0000, 0, 0, 0)\n" +
                 "SET IDENTITY_INSERT [dbo].[ScheinMedDaten] OFF\n" +
 
                 // VerordnungsmodulDosierungDbo table ----------------------------------------------------------------------------------
