@@ -34,27 +34,39 @@ public class MedicationDbLookup {
     }
 
     public static String getMedicationName(List<String> tableEntry) {
-        return tableEntry.get(5);
+        return tableEntry.get(5).trim();
     }
 
     public static String getQuantity(List<String> tableEntry) {
-        return tableEntry.get(2);
+        return tableEntry.get(2).trim();
     }
 
-    public static String getNorm(List<String> tableEntry) {
-        return tableEntry.get(3);
+    public static String getPackageSize(List<String> tableEntry) {
+        return tableEntry.get(3).trim();
     }
 
     public static String getAVP(List<String> tableEntry) {
-        return tableEntry.get(4);
+        return tableEntry.get(4).trim();
     }
 
     public static String getATC(List<String> tableEntry) {
-        return tableEntry.get(6);
+        return tableEntry.get(6).trim();
     }
 
     public static String getComposition(List<String> tableEntry) {
-        return tableEntry.get(7);
+        return tableEntry.get(7).trim();
+    }
+
+    public static String getPharmaceuticalFormCode(List<String> tableEntry) {
+        return tableEntry.get(8).trim();
+    }
+
+    public static String getPharmaceuticalFormText(List<String> tableEntry) {
+        return tableEntry.get(9).trim();
+    }
+
+    public static String getManufacturer(List<String> tableEntry) {
+        return tableEntry.get(10).trim();
     }
 
     public InputStream getFileAsIOStream(final String fileName) {
