@@ -22,6 +22,7 @@ public class MedicationDbLookup {
             while(scanner.hasNext() && !found) {
                 String[] myArray = scanner.next().split(",");
                 List<String> tableEntry = Arrays.asList(myArray);
+                log.info("tableEntry: " + tableEntry.size() + tableEntry);
                 String pznFound = tableEntry.get(1);
 
                 if (pznFound.equals(pznToLookup)) {
