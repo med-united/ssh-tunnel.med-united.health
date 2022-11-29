@@ -28,6 +28,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install git-lfs
           git lfs install
+          git lfs track "*.csv"
 
       - name: Build, tag, and push image to Amazon ECR
         env:
