@@ -9,27 +9,52 @@ public class MedicationDbLookup {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MedicationDbLookup.class);
 
-    public static List<String> lookupMedicationByPZN(String pznToLookup) {
-        boolean found = false;
+    public static List<String> lookupMedicationByPZN_db1(String pznToLookup) {
 
         try {
             MedicationDbLookup instance = new MedicationDbLookup();
-            InputStream is = instance.getFileAsIOStream("medicationDatabase.csv");
+            InputStream is = instance.getFileAsIOStream("medicationDatabase-part1.csv");
 
             Scanner scanner = new Scanner(is);
             scanner.useDelimiter("[\n]");
 
-            while(scanner.hasNext() && !found) {
+            while(scanner.hasNext()) {
                 String[] myArray = scanner.next().split(",");
-                List<String> tableEntry = Arrays.asList(myArray);
-                String pznFound = tableEntry.get(1);
+                List<String> tableEntry1 = Arrays.asList(myArray);
+                String pznFound = tableEntry1.get(1);
 
                 if (pznFound.equals(pznToLookup)) {
-                    return tableEntry;
+                    System.out.println(tableEntry1);
+                    return tableEntry1;
                 }
             }
         } catch (Exception e) {
-            log.error("Error while reading medicationDatabase.csv", e);
+            log.error("Error while reading medicationDatabase-part1.csv", e);
+        }
+        return null;
+    }
+
+    public static List<String> lookupMedicationByPZN_db2(String pznToLookup) {
+
+        try {
+            MedicationDbLookup instance = new MedicationDbLookup();
+            InputStream is = instance.getFileAsIOStream("medicationDatabase-part2.csv");
+
+            Scanner scanner = new Scanner(is);
+            scanner.useDelimiter("[\n]");
+
+            while(scanner.hasNext()) {
+                String[] myArray = scanner.next().split(",");
+                List<String> tableEntry2 = Arrays.asList(myArray);
+                String pznFound = tableEntry2.get(0);
+
+                if (pznFound.equals(pznToLookup)) {
+                    System.out.println(tableEntry2);
+                    return tableEntry2;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error while reading medicationDatabase-part1.csv", e);
         }
         return null;
     }
@@ -55,19 +80,19 @@ public class MedicationDbLookup {
     }
 
     public static String getComposition(List<String> tableEntry) {
-        return tableEntry.get(7).trim();
+        return tableEntry.get(1).trim();
     }
 
     public static String getPharmaceuticalFormCode(List<String> tableEntry) {
-        return tableEntry.get(8).trim();
+        return tableEntry.get(7).trim();
     }
 
     public static String getPharmaceuticalFormText(List<String> tableEntry) {
-        return tableEntry.get(9).trim();
+        return tableEntry.get(8).trim();
     }
 
     public static String getManufacturer(List<String> tableEntry) {
-        return tableEntry.get(10).trim();
+        return tableEntry.get(9).trim();
     }
 
     public InputStream getFileAsIOStream(final String fileName) {
