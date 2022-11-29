@@ -43,11 +43,10 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           ENVSUBST: true
 
-      - run:
-          name: Install Git-LFS
-          command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
-            - checkout
-            - init-git-lfs
+      - name: Install Git-LFS
+        command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
+          - checkout
+          - init-git-lfs
 
 
 
