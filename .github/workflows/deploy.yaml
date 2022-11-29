@@ -44,7 +44,7 @@ jobs:
           ENVSUBST: true
 
       - name: Install Git-LFS
-        command: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
+        run: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
           - checkout
           - init-git-lfs
 
