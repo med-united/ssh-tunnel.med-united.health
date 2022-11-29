@@ -19,6 +19,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
 
+      - name: Install Git-LFS
+          run: |
+            sudo apt-get update
+            sudo apt-get install git-lfs
+            git lfs install
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -43,10 +49,6 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           ENVSUBST: true
 
-      - name: Install Git-LFS
-        run: sudo apt-get update && sudo apt-get install git-lfs; git lfs install
-          - checkout
-          - init-git-lfs
 
 
 
