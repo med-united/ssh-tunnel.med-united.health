@@ -313,12 +313,38 @@ public class IsynetMSQLConnector {
 
         log.info("Attempting to create medication...");
 
-        String[] dosage = BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle).split("-");
-        String morgens = dosage.length > 0 ? dosage[0] : "0";
-        String mittags = dosage.length > 1 ? dosage[1] : "0";
-        String abends = dosage.length > 2 ? dosage[2] : "0";
-        String nachts = dosage.length > 3 ? dosage[3] : "0";
+        // dosage
+        String dosage = BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle);
+        String morgens;
+        String mittags;
+        String abends;
+        String nachts;
+        String dosierungsFreitext;
+        String dosierEinheit;
+        String dosierEinheitCode;
+        if (dosage.contains("/")) {
+            morgens = "NULL";
+            mittags = "NULL";
+            abends = "NULL";
+            nachts = "NULL";
+            dosierungsFreitext = "N'" + dosage + "'";
+            dosierEinheit = "NULL";
+            dosierEinheitCode = "NULL";
+        } else {
+            if (dosage.contains(",")) {
+                dosage = dosage.replace(",", ".");
+            }
+            String[] dosageTimes = dosage.split("-");
+            morgens = dosageTimes.length > 0 ? dosageTimes[0] : "0";
+            mittags = dosageTimes.length > 1 ? dosageTimes[1] : "0";
+            abends = dosageTimes.length > 2 ? dosageTimes[2] : "0";
+            nachts = dosageTimes.length > 3 ? dosageTimes[3] : "0";
+            dosierungsFreitext = "NULL";
+            dosierEinheit = "1";
+            dosierEinheitCode = "1";
+        }
 
+        // package size
         String packageSize = MedicationDbLookup.getPackageSize(tableEntry);
         if (!Objects.equals(packageSize, "")) {
             packageSize = packageSize.replace("N", "");
@@ -327,8 +353,8 @@ public class IsynetMSQLConnector {
         } else { // cases verified: "PUL", "KOM"
             packageSize = "6";
         }
-        log.info("package size: " + packageSize);
 
+        // ATC code
         String atcCode = MedicationDbLookup.getATC(tableEntry);
         String anatomieKlasse;
         if (Objects.equals(atcCode, "")) {
@@ -338,8 +364,8 @@ public class IsynetMSQLConnector {
             atcCode = "N'" + MedicationDbLookup.getATC(tableEntry) + "'";
             anatomieKlasse = "N'" + MedicationDbLookup.getATC(tableEntry) + "'";
         }
-        log.info("atc code: " + atcCode);
 
+        // composition
         String medicationIngredients = MedicationDbLookup.getComposition(tableEntry);
         String wirkstoff;
         String atcLangText = "";
@@ -376,16 +402,12 @@ public class IsynetMSQLConnector {
             wirkstoff = "N''";
             atcLangText = "N''";
         }
-        log.info("medication ingredients: " + medicationIngredients);
-        log.info("allIngredients: " + allIngredientsList);
-        log.info("allIngredients size: " + allIngredientsList.size());
-        log.info("allIngredients string: " + allIngredientsString);
 
+        // AVP
         String avp = MedicationDbLookup.getAVP(tableEntry);
         if (Objects.equals(avp, "")) {
             avp = "0.00";
         }
-        log.info("avp: " + avp);
 
         DateTimeFormatter dtf1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS");
         DateTimeFormatter dtf2 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
@@ -566,8 +588,8 @@ public class IsynetMSQLConnector {
                 "INSERT [dbo].[VerordnungsmodulDosierungDbo] ([ID], [Morgens], [Mittags], [Abends], [Nachts], [DosierungsFreitext], " +
                 "[StartOfTaking], [EndOfTaking], [Status], [DosierEinheit], " +
                 "[DosierEinheitCode], [RezeptDbo_Id], [MedikationDbo_Id])" +
-                "VALUES (" + dosierungId + "," + morgens + "," + mittags + "," + abends + "," + nachts + ", NULL, NULL, NULL, 1, 1, " +
-                "1," + rezeptId + "," + medikationId + ")\n" +
+                "VALUES (" + dosierungId + "," + morgens + "," + mittags + "," + abends + "," + nachts + ", " + dosierungsFreitext + ", NULL, NULL, 1, " +
+                dosierEinheit + "," + dosierEinheitCode + "," + rezeptId + "," + medikationId + ")\n" +
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulDosierungDbo] OFF\n" +
                 "COMMIT TRANSACTION";
 
