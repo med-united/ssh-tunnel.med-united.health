@@ -25,9 +25,8 @@ public class IsynetMSQLConnector {
     public void insertToIsynet(Bundle parsedBundle, Map<String, Object> connectionParameter)  {
 
         String pznToLookup = BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle);
-        List<String> tableEntry1 = MedicationDbLookup.lookupMedicationByPZN_db1(pznToLookup);
-        List<String> tableEntry2 = MedicationDbLookup.lookupMedicationByPZN_db2(pznToLookup);
-        printMedicationInfo(pznToLookup, tableEntry1, tableEntry2);
+        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(pznToLookup);
+        printMedicationInfo(pznToLookup, tableEntry);
 
         try {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
@@ -48,11 +47,11 @@ public class IsynetMSQLConnector {
             }
 
             // Creates medication only if it exists in the Db from where medication info is obtained + Patient is not dead + Patient is not at the hospital
-            if (tableEntry1 != null && tableEntry2 != null && !isPatientDateOfDeathKnown(patientNumber, stmt)
-                                                           && !isPatientDeadButTheDateIsUnknown(patientNumber, stmt)
-                                                           && !checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
-                createMedication(tableEntry1, tableEntry2, patientNumber, parsedBundle, stmt);
-            } else if (tableEntry1 == null && tableEntry2 != null) {
+            if (tableEntry != null && !isPatientDateOfDeathKnown(patientNumber, stmt)
+                                   && !isPatientDeadButTheDateIsUnknown(patientNumber, stmt)
+                                   && !checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
+                createMedication(tableEntry, patientNumber, parsedBundle, stmt);
+            } else if (tableEntry == null) {
                 log.info("The medication corresponding to PZN " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + " could not be found on the database, please insert it manually.");
             } else if (isPatientDateOfDeathKnown(patientNumber, stmt) || isPatientDeadButTheDateIsUnknown(patientNumber, stmt)) {
                 log.info("The medication was not created because the Patient is dead.");
@@ -65,19 +64,19 @@ public class IsynetMSQLConnector {
         }
     }
 
-    public void printMedicationInfo(String pznToLookup, List<String> tableEntry1, List<String> tableEntry2) {
+    public void printMedicationInfo(String pznToLookup, List<String> tableEntry) {
 
-        if (tableEntry1 != null && tableEntry2 != null) {
+        if (tableEntry != null) {
             log.info("[ MEDICATION OBTAINED FROM DB ] PZN: " + pznToLookup +
-                    " // name: " + MedicationDbLookup.getMedicationName(tableEntry1) +
-                    " // quantity: " + MedicationDbLookup.getQuantity(tableEntry1) +
-                    " // package size: " + MedicationDbLookup.getPackageSize(tableEntry1) +
-                    " // AVP: " + MedicationDbLookup.getAVP(tableEntry1) +
-                    " // ATC: " + MedicationDbLookup.getATC(tableEntry1) +
-                    " // composition: " + MedicationDbLookup.getComposition(tableEntry2) +
-                    " // pharmaceutical form code: " + MedicationDbLookup.getPharmaceuticalFormCode(tableEntry1) +
-                    " // pharmaceutical form text: " + MedicationDbLookup.getPharmaceuticalFormText(tableEntry1) +
-                    " // manufacturer: " + MedicationDbLookup.getManufacturer(tableEntry1));
+                    " // name: " + MedicationDbLookup.getMedicationName(tableEntry) +
+                    " // quantity: " + MedicationDbLookup.getQuantity(tableEntry) +
+                    " // package size: " + MedicationDbLookup.getPackageSize(tableEntry) +
+                    " // AVP: " + MedicationDbLookup.getAVP(tableEntry) +
+                    " // ATC: " + MedicationDbLookup.getATC(tableEntry) +
+                    " // composition: " + MedicationDbLookup.getComposition(tableEntry) +
+                    " // pharmaceutical form code: " + MedicationDbLookup.getPharmaceuticalFormCode(tableEntry) +
+                    " // pharmaceutical form text: " + MedicationDbLookup.getPharmaceuticalFormText(tableEntry) +
+                    " // manufacturer: " + MedicationDbLookup.getManufacturer(tableEntry));
         }
     }
 
@@ -310,7 +309,7 @@ public class IsynetMSQLConnector {
         return scheinNummerUpdated && patientNummerUpdated;
     }
 
-    public void createMedication(List<String> tableEntry1, List<String> tableEntry2, int patientNummer, Bundle parsedBundle, Statement stmt) throws SQLException {
+    public void createMedication(List<String> tableEntry, int patientNummer, Bundle parsedBundle, Statement stmt) throws SQLException {
 
         log.info("Attempting to create medication...");
 
@@ -320,28 +319,28 @@ public class IsynetMSQLConnector {
         String abends = dosage.length > 2 ? dosage[2] : "0";
         String nachts = dosage.length > 3 ? dosage[3] : "0";
 
-        String packageSize = MedicationDbLookup.getPackageSize(tableEntry1);
+        String packageSize = MedicationDbLookup.getPackageSize(tableEntry);
         if (!Objects.equals(packageSize, "")) {
             packageSize = packageSize.replace("N", "");
-        } else if (MedicationDbLookup.getPharmaceuticalFormCode(tableEntry1).equals("SMT")) {
+        } else if (MedicationDbLookup.getPharmaceuticalFormCode(tableEntry).equals("SMT")) {
             packageSize = "5";
         } else { // cases verified: "PUL", "KOM"
             packageSize = "6";
         }
         log.info("package size: " + packageSize);
 
-        String atcCode = MedicationDbLookup.getATC(tableEntry1);
+        String atcCode = MedicationDbLookup.getATC(tableEntry);
         String anatomieKlasse;
         if (Objects.equals(atcCode, "")) {
             atcCode = "NULL";
             anatomieKlasse = "N''";
         } else {
-            atcCode = "N'" + MedicationDbLookup.getATC(tableEntry1) + "'";
-            anatomieKlasse = "N'" + MedicationDbLookup.getATC(tableEntry1) + "'";
+            atcCode = "N'" + MedicationDbLookup.getATC(tableEntry) + "'";
+            anatomieKlasse = "N'" + MedicationDbLookup.getATC(tableEntry) + "'";
         }
         log.info("atc code: " + atcCode);
 
-        String medicationIngredients = MedicationDbLookup.getComposition(tableEntry2);
+        String medicationIngredients = MedicationDbLookup.getComposition(tableEntry);
         String wirkstoff;
         String atcLangText = "";
         String allIngredientsString = "";
@@ -382,7 +381,7 @@ public class IsynetMSQLConnector {
         log.info("allIngredients size: " + allIngredientsList.size());
         log.info("allIngredients string: " + allIngredientsString);
 
-        String avp = MedicationDbLookup.getAVP(tableEntry1);
+        String avp = MedicationDbLookup.getAVP(tableEntry);
         if (Objects.equals(avp, "")) {
             avp = "0.00";
         }
@@ -419,9 +418,9 @@ public class IsynetMSQLConnector {
                 "[LastChanged], [DatasetLastChanged], [UserLastChanged], [IsArchiviert], " +
                 "[Hilfsmittelpositionsnummer])" +
                 "VALUES (" + medikamentId + ", " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + ", N'" +
-                MedicationDbLookup.getMedicationName(tableEntry1) + "', N'" + MedicationDbLookup.getManufacturer(tableEntry1) + "', " + atcCode +
-                ", " + medicationIngredients + ", N'" + MedicationDbLookup.getPharmaceuticalFormCode(tableEntry1) + "', N'" +
-                MedicationDbLookup.getPharmaceuticalFormText(tableEntry1) + "', N'', N'', N'', N'', " + packageSize + ", 1, 0, NULL," +
+                MedicationDbLookup.getMedicationName(tableEntry) + "', N'" + MedicationDbLookup.getManufacturer(tableEntry) + "', " + atcCode +
+                ", " + medicationIngredients + ", N'" + MedicationDbLookup.getPharmaceuticalFormCode(tableEntry) + "', N'" +
+                MedicationDbLookup.getPharmaceuticalFormText(tableEntry) + "', N'', N'', N'', N'', " + packageSize + ", 1, 0, NULL," +
                 " NULL, 500, 500, 1, NULL, 0, CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1'," +
                 "CAST(N'" + timestamp1 + "+00:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL)\n" +
                 "SET IDENTITY_INSERT [dbo].[VerordnungsmodulMedikamentDbo] OFF\n" +
@@ -482,7 +481,7 @@ public class IsynetMSQLConnector {
                 "[IsErezept], [AbgabehinweisApotheke])" +
                 "VALUES (" + rezeptId + ", N'', 0, " + medikamentId + ", N'" + patientNummer + "', CAST(N'" + timestamp1 + "' AS DateTime2), " +
                 "CAST(N'" + timestamp1 + "' AS DateTime2), N'BEH-1', N'" + getPatientScheinNummer(patientNummer, stmt) + "', N'1', N'1', N'Pckg', N'1', 1, 0, 0, 0, 0, 0, 0, 0, 1, N'" +
-                MedicationDbLookup.getMedicationName(tableEntry1) + "\n" + "PZN" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
+                MedicationDbLookup.getMedicationName(tableEntry) + "\n" + "PZN" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
                 " »" + BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + "«'" + ", 1, NULL, 0, 0, 0, 0, 0, 0, NULL, 0, NULL, " +
                 "NULL, NULL, 1, 1, 0, 0, NULL, 0, 0, NULL, NULL, NULL, CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', " +
                 "N'ANW-1', CAST(N'" + timestamp1 + "+02:00' AS DateTimeOffset), N'1', N'ANW-1', 0, NULL, N'101', 3, 0, 0, NULL, 0, " +
@@ -520,7 +519,7 @@ public class IsynetMSQLConnector {
                 "[MandantGeändert], [UserGeändert], [DatumÄnderung], [ScheinNummer], [GruppenNummer], " +
                 "[Hintergrundfarbe], [Detail], [MandantAnlage], [UserAnlage], [DatumAnlage], [MandantFremd], " +
                 "[FreigabeStatus], [VersandStatus], [Uhrzeitanlage])" +
-                "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N'Medikament: " + MedicationDbLookup.getMedicationName(tableEntry1) + ", Dos.: " +
+                "VALUES (" + krablLinkNummer + "," + patientNummer + ", 4000, CAST(N'" + timestamp2 + "' AS DateTime), N'LM', N'Medikament: " + MedicationDbLookup.getMedicationName(tableEntry) + ", Dos.: " +
                 BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle) + ", PZN: " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
                 ", AVP: " + avp + "', 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " + getPatientScheinNummer(patientNummer, stmt) + ", 0, 0, " +
                 "N'\n', 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, " +
@@ -554,8 +553,8 @@ public class IsynetMSQLConnector {
                 "[IMMVorhanden], [Sortierung], [ATCLangtext], [ErstattungStattAbschlag], [VertragspreisNach129_5]," +
                 "[NormGesamtzuzahlung], [Verordnungseinschraenkung], [Verordnungsausschluss], [VOAusschlussAnlage3])" +
                 "VALUES (" + scheinMedDatenNummer + ", N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + "', N'', 1, N'" +
-                MedicationDbLookup.getMedicationName(tableEntry1) + "', 1, 1, 0, N'5', N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
-                "', N'', " + avp + ", 0.0000, 0.0000, " + anatomieKlasse + ", N'" + MedicationDbLookup.getManufacturer(tableEntry1) + "', " +
+                MedicationDbLookup.getMedicationName(tableEntry) + "', 1, 1, 0, N'5', N'" + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) +
+                "', N'', " + avp + ", 0.0000, 0.0000, " + anatomieKlasse + ", N'" + MedicationDbLookup.getManufacturer(tableEntry) + "', " +
                 wirkstoff + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, CAST(N'" + timestamp2 + "' AS DateTime), " +
                 "1, 1, CAST(N'" + timestamp2 + "' AS DateTime), 0, 0, 0, 3, N'mg', 0.0000, N'', 0, 0, 0, 0, 0, 0, N'', N'', 0.0000, 0, 0, " +
                 "0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), 0, 0.0000, 0, 0, 0, 0, 0, CAST(N'1899-12-30T00:00:00.000' AS DateTime), " +

@@ -9,82 +9,75 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MedicationDbLookupTest {
 
-    List<String> tableEntryWithAllFields_db1 = Arrays.asList("384016", "2135106", "2X15 ST", "N1", "16.52", "Kalinor", "A12BA30", "BTA", "Brausetabletten", "Desma GmbH");
-    List<String> tableEntryWithAllFields_db2 = Arrays.asList("2135106", "11288\\tCitronensäure; wasserfrei\\n10441\\tKalium citrat 1-Wasser\\n10455\\tKalium hydrogencarbonat");
-
-    List<String> tableEntryWithSomeEmptyFields_db1 = Arrays.asList("921336", "10792640", "25X2 ST", "", "", "Medicomp Drain7.5x7.5cm St-Aca ", "", "KOM", "Kompressen", "Aca Müller/Adag Pharma AG");
-    List<String> tableEntryWithSomeEmptyFields_db2 = Arrays.asList("10792640", "");
+    List<String> tableEntryWithAllFields = Arrays.asList("384016", "2135106", "2X15 ST", "N1", "16.52", "Kalinor", "A12BA30", "11288\\tCitronensäure; wasserfrei\\n10441\\tKalium citrat 1-Wasser\\n10455\\tKalium hydrogencarbonat", "BTA", "Brausetabletten", "Desma GmbH");
+    List<String> tableEntryWithSomeEmptyFields = Arrays.asList("921336", "10792640", "25X2 ST", "", "", "Medicomp Drain7.5x7.5cm St-Aca ", "", "", "KOM", "Kompressen", "Aca Müller/Adag Pharma AG");
 
     @Test
     void testSuccessfulLookupMedicationByPZN() {
-        List<String> tableEntry1 = MedicationDbLookup.lookupMedicationByPZN_db1("2135106");
-        List<String> tableEntry2 = MedicationDbLookup.lookupMedicationByPZN_db2("2135106");
-        assertNotNull(tableEntry1);
-        assertEquals(10, tableEntry1.size());
-        assertEquals(tableEntry1, tableEntryWithAllFields_db1);
-        assertNotNull(tableEntry2);
-        assertEquals(2, tableEntry2.size());
-        assertEquals(tableEntry2, tableEntryWithAllFields_db2);
+        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("2135106");
+        assertNotNull(tableEntry);
+        assertEquals(11, tableEntry.size());
+        assertEquals(tableEntry, tableEntryWithAllFields);
     }
     @Test
     void testUnsuccessfulLookupMedicationByPZN() {
-        List<String> tableEntryWithSomeEmptyFields_db1 = MedicationDbLookup.lookupMedicationByPZN_db1("123456789");
-        assertNull(tableEntryWithSomeEmptyFields_db1);
+        List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN("123456789");
+        assertNull(tableEntry);
     }
     @Test
     void testGetMedicationName() {
-        assertEquals("Kalinor", MedicationDbLookup.getMedicationName(tableEntryWithAllFields_db1));
+        assertEquals("Kalinor", MedicationDbLookup.getMedicationName(tableEntryWithAllFields));
     }
     @Test
     void testGetMedicationNameWithSpaceAtTheEnd() {
-        assertEquals("Medicomp Drain7.5x7.5cm St-Aca", MedicationDbLookup.getMedicationName(tableEntryWithSomeEmptyFields_db1));
+        assertEquals("Medicomp Drain7.5x7.5cm St-Aca", MedicationDbLookup.getMedicationName(tableEntryWithSomeEmptyFields));
     }
     @Test
     void testGetQuantity() {
-        assertEquals("2X15 ST", MedicationDbLookup.getQuantity(tableEntryWithAllFields_db1));
+        assertEquals("2X15 ST", MedicationDbLookup.getQuantity(tableEntryWithAllFields));
     }
     @Test
     void testGetPackageSize() {
-        assertEquals("N1", MedicationDbLookup.getPackageSize(tableEntryWithAllFields_db1));
+        assertEquals("N1", MedicationDbLookup.getPackageSize(tableEntryWithAllFields));
     }
     @Test
     void testGetEmptyPackageSize() {
-        assertEquals("", MedicationDbLookup.getPackageSize(tableEntryWithSomeEmptyFields_db1));
+        assertEquals("", MedicationDbLookup.getPackageSize(tableEntryWithSomeEmptyFields));
     }
     @Test
     void testGetAVP() {
-        assertEquals("16.52", MedicationDbLookup.getAVP(tableEntryWithAllFields_db1));
+        assertEquals("16.52", MedicationDbLookup.getAVP(tableEntryWithAllFields));
     }
     @Test
     void testGetEmptyAVP() {
-        assertEquals("", MedicationDbLookup.getAVP(tableEntryWithSomeEmptyFields_db1));
+        assertEquals("", MedicationDbLookup.getAVP(tableEntryWithSomeEmptyFields));
     }
     @Test
     void testGetATC() {
-        assertEquals("A12BA30", MedicationDbLookup.getATC(tableEntryWithAllFields_db1));
+        assertEquals("A12BA30", MedicationDbLookup.getATC(tableEntryWithAllFields));
     }
     @Test
     void testGetEmptyATC() {
-        assertEquals("", MedicationDbLookup.getATC(tableEntryWithSomeEmptyFields_db1));
+        assertEquals("", MedicationDbLookup.getATC(tableEntryWithSomeEmptyFields));
     }
     @Test
     void testGetComposition() {
-        assertEquals("11288\\tCitronensäure; wasserfrei\\n10441\\tKalium citrat 1-Wasser\\n10455\\tKalium hydrogencarbonat", MedicationDbLookup.getComposition(tableEntryWithAllFields_db2));
+        assertEquals("11288\\tCitronensäure; wasserfrei\\n10441\\tKalium citrat 1-Wasser\\n10455\\tKalium hydrogencarbonat", MedicationDbLookup.getComposition(tableEntryWithAllFields));
     }
     @Test
     void testGetEmptyComposition() {
-        assertEquals("", MedicationDbLookup.getComposition(tableEntryWithSomeEmptyFields_db2));
+        assertEquals("", MedicationDbLookup.getComposition(tableEntryWithSomeEmptyFields));
     }
     @Test
     void testGetPharmaceuticalFormCode() {
-        assertEquals("BTA", MedicationDbLookup.getPharmaceuticalFormCode(tableEntryWithAllFields_db1));
+        assertEquals("BTA", MedicationDbLookup.getPharmaceuticalFormCode(tableEntryWithAllFields));
     }
     @Test
     void testGetPharmaceuticalFormText() {
-        assertEquals("Brausetabletten", MedicationDbLookup.getPharmaceuticalFormText(tableEntryWithAllFields_db1));
+        assertEquals("Brausetabletten", MedicationDbLookup.getPharmaceuticalFormText(tableEntryWithAllFields));
     }
     @Test
     void testGetManufacturer() {
-        assertEquals("Desma GmbH", MedicationDbLookup.getManufacturer(tableEntryWithAllFields_db1));
+        assertEquals("Desma GmbH", MedicationDbLookup.getManufacturer(tableEntryWithAllFields));
     }
 }
