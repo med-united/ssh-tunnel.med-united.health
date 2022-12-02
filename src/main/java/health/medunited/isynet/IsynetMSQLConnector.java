@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.jms.JMSContext;
-import javax.jms.Topic;
+import javax.jms.Queue;
 import javax.json.Json;
 import javax.json.JsonObject;
 
@@ -90,10 +90,10 @@ public class IsynetMSQLConnector {
     }
 
     private void sendPrescriptionStatusReply(JMSContext context, String medicationRequestId) {
-        log.info("Sending message to topic PrescriptionStatus");
-        Topic topic = context.createTopic("PrescriptionStatus");
+        log.info("Sending message to queue PrescriptionStatus. For "+medicationRequestId);
+        Queue queue = context.createQueue("PrescriptionStatus");
         JsonObject json = Json.createObjectBuilder().add("medicationRequestId", medicationRequestId).add("info", currentLog).build();
-        context.createProducer().send(topic, json.toString());
+        context.createProducer().send(queue, json.toString());
     }
 
     public void printMedicationInfo(String pznToLookup, List<String> tableEntry) {
