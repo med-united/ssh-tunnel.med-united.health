@@ -78,9 +78,11 @@ public class IsynetMSQLConnector {
         }
         catch (SQLException e) {
             log.log(Level.SEVERE, "SQL problem while inserting medication", e);
+            currentLog += "SQL problem while inserting medication";
         }
         catch (Exception e) {
-            log.log(Level.SEVERE, "SQL problem while inserting medication", e);
+            log.log(Level.SEVERE, "Problem while inserting medication", e);
+            currentLog += "Problem while inserting medication";
         } finally {
             sendPrescriptionStatusReply(context, medicationRequestId);
             currentLog = "";
@@ -88,6 +90,7 @@ public class IsynetMSQLConnector {
     }
 
     private void sendPrescriptionStatusReply(JMSContext context, String medicationRequestId) {
+        log.info("Sending message to topic PrescriptionStatus");
         Topic topic = context.createTopic("PrescriptionStatus");
         JsonObject json = Json.createObjectBuilder().add("medicationRequestId", medicationRequestId).add("info", currentLog).build();
         context.createProducer().send(topic, json.toString());
