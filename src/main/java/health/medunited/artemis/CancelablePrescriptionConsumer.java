@@ -9,8 +9,15 @@ import java.util.logging.Logger;
 
 import javax.enterprise.context.Dependent;
 import javax.inject.Inject;
-import javax.jms.*;
+import javax.jms.BytesMessage;
+import javax.jms.ConnectionFactory;
 import javax.jms.IllegalStateException;
+import javax.jms.IllegalStateRuntimeException;
+import javax.jms.JMSConsumer;
+import javax.jms.JMSContext;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.Queue;
 
 import org.hl7.fhir.r4.model.Bundle;
 
@@ -117,7 +124,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
 
                             if (Objects.equals(message.getStringProperty(PVS_HEADER), "isynet")) {
 
-                                isynetMSQLConnector.insertToIsynet(parsedBundle, connectionParameter);
+                                isynetMSQLConnector.insertToIsynet(parsedBundle, connectionParameter, context);
 
                             } else if (Objects.equals(message.getStringProperty(PVS_HEADER), "t2med")) {
                                 setT2MedCredentialsIntoSystemProperties(connectionParameter);

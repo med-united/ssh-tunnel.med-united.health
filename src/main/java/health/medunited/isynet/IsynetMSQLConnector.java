@@ -1,14 +1,28 @@
 package health.medunited.isynet;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.IsoFields;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.jms.JMSContext;
+import javax.jms.Topic;
+import javax.json.Json;
+import javax.json.JsonObject;
 
 import org.hl7.fhir.r4.model.Bundle;
 
@@ -22,8 +36,10 @@ public class IsynetMSQLConnector {
     private static final String PATIENT = "patient";
     private static final String MEDICATIONSTATEMENT = "medicationStatement";
 
-    public void insertToIsynet(Bundle parsedBundle, Map<String, Object> connectionParameter)  {
+    private String currentLog;
 
+    public void insertToIsynet(Bundle parsedBundle, Map<String, Object> connectionParameter, JMSContext context)  {
+        currentLog = "";
         String pznToLookup = BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle);
         List<String> tableEntry = MedicationDbLookup.lookupMedicationByPZN(pznToLookup);
         printMedicationInfo(pznToLookup, tableEntry);
@@ -34,15 +50,16 @@ public class IsynetMSQLConnector {
             throw new RuntimeException(e);
         }
         String connectionUrl = "jdbc:sqlserver://"+connectionParameter.get("hostname")+":"+connectionParameter.get("port")+";databaseName=WINACS;user="+connectionParameter.get("user")+";password="+connectionParameter.get("password")+";trustServerCertificate=true";
+        String medicationRequestId = "";
         try (Connection con = DriverManager.getConnection(connectionUrl); Statement stmt = con.createStatement()) {
-
+            medicationRequestId = parsedBundle.getEntry().get(2).getResource().getId();
             // deleteAllMedications(stmt);
             // deleteAllPatients(stmt);
 
             int patientNumber = checkIfPatientExistsInTheSystem(parsedBundle, stmt);
 
             if (patientNumber == -1) { // Patient does not exist
-                log.info("This patient does not exist in the Db.");
+                info("This patient does not exist in the Db.");
                 patientNumber = createPatient(parsedBundle, stmt);
             }
 
@@ -52,22 +69,34 @@ public class IsynetMSQLConnector {
                                    && !checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
                 createMedication(tableEntry, patientNumber, parsedBundle, stmt);
             } else if (tableEntry == null) {
-                log.info("The medication corresponding to PZN " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + " could not be found on the database, please insert it manually.");
+                info("The medication corresponding to PZN " + BundleParser.getPzn(MEDICATIONSTATEMENT, parsedBundle) + " could not be found on the database, please insert it manually.");
             } else if (isPatientDateOfDeathKnown(patientNumber, stmt) || isPatientDeadButTheDateIsUnknown(patientNumber, stmt)) {
-                log.info("The medication was not created because the Patient is dead.");
+                info("The medication was not created because the Patient is dead.");
             } else if (checkIfPatientIsAtTheHospital(patientNumber, stmt)) {
-                log.info("The medication was not created because the Patient is at the hospital.");
+                info("The medication was not created because the Patient is at the hospital.");
             }
         }
         catch (SQLException e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, "SQL problem while inserting medication", e);
         }
+        catch (Exception e) {
+            log.log(Level.SEVERE, "SQL problem while inserting medication", e);
+        } finally {
+            sendPrescriptionStatusReply(context, medicationRequestId);
+            currentLog = "";
+        }
+    }
+
+    private void sendPrescriptionStatusReply(JMSContext context, String medicationRequestId) {
+        Topic topic = context.createTopic("PrescriptionStatus");
+        JsonObject json = Json.createObjectBuilder().add("medicationRequestId", medicationRequestId).add("info", currentLog).build();
+        context.createProducer().send(topic, json.toString());
     }
 
     public void printMedicationInfo(String pznToLookup, List<String> tableEntry) {
 
         if (tableEntry != null) {
-            log.info("[ MEDICATION OBTAINED FROM DB ] PZN: " + pznToLookup +
+            info("[ MEDICATION OBTAINED FROM DB ] PZN: " + pznToLookup +
                     " // name: " + MedicationDbLookup.getMedicationName(tableEntry) +
                     " // quantity: " + MedicationDbLookup.getQuantity(tableEntry) +
                     " // package size: " + MedicationDbLookup.getPackageSize(tableEntry) +
@@ -96,7 +125,7 @@ public class IsynetMSQLConnector {
 
         if (rs.next()) {
             int patientNumber = rs.getInt("Nummer");
-            log.info("Patient number in the db: " + patientNumber);
+            info("Patient number in the db: " + patientNumber);
             return patientNumber;
         } else {
             return -1;
@@ -105,7 +134,7 @@ public class IsynetMSQLConnector {
 
     public int createPatient(Bundle parsedBundle, Statement stmt) throws SQLException {
 
-        log.info("Attempting to create patient...");
+        info("Attempting to create patient...");
         String anrede = "";
         String geschlecht = "";
         if (BundleParser.getGender(PATIENT, parsedBundle).equals("female")) {
@@ -223,14 +252,14 @@ public class IsynetMSQLConnector {
 
         int patientNumber = checkIfPatientExistsInTheSystem(parsedBundle, stmt); // check if patient was created
         if (patientNumber > -1) {
-            log.info("Patient was successfully created in the Db.");
+            info("Patient was successfully created in the Db.");
             while (!counterTableWasUpdated(scheinNummer, patientNummer, stmt)) {
                 updateCounterTable(scheinNummer, patientNummer, stmt);
             }
-            log.info("Db counter successfully updated.");
+            info("Db counter successfully updated.");
             return patientNumber;
         } else {
-            log.info("Some problem occurred and the patient was not created.");
+            info("Some problem occurred and the patient was not created.");
             return createPatient(parsedBundle, stmt);
         }
     }
@@ -311,7 +340,7 @@ public class IsynetMSQLConnector {
 
     public void createMedication(List<String> tableEntry, int patientNummer, Bundle parsedBundle, Statement stmt) throws SQLException {
 
-        log.info("Attempting to create medication...");
+        info("Attempting to create medication...");
 
         // dosage
         String dosage = BundleParser.getDosage(MEDICATIONSTATEMENT, parsedBundle);
@@ -601,7 +630,7 @@ public class IsynetMSQLConnector {
         ResultSetMetaData rsmd = rs.getMetaData();
         int columnsNumber = rsmd.getColumnCount();
 
-        log.info("Medications currently on the system for this Patient:");
+        info("Medications currently on the system for this Patient:");
         StringBuilder medicationOfPatient = new StringBuilder();
         while (rs.next()) {
             medicationOfPatient.append("\n");
@@ -612,7 +641,7 @@ public class IsynetMSQLConnector {
             }
         }
         String medicationsOfPatient = String.valueOf(medicationOfPatient);
-        log.info(medicationsOfPatient);
+        info(medicationsOfPatient);
     }
 
     public int getMaxIDFromTableAndColumn(String table, String column, Statement stmt) throws SQLException {
@@ -623,7 +652,7 @@ public class IsynetMSQLConnector {
         ResultSet rs = stmt.executeQuery(SQL_getMaxId);
         if (rs.next()) {
             int id = rs.getInt(column);
-            // log.info("Id value for " + column + " = " + id);
+            // info("Id value for " + column + " = " + id);
             return id + 1;
         }
         return 1;
@@ -635,7 +664,7 @@ public class IsynetMSQLConnector {
         ResultSet rs = stmt.executeQuery(SQL_getScheinNummer);
         if (rs.next()) {
             int scheinNummer = rs.getInt("Nummer");
-            // log.info("Scheinnummer = " + scheinNummer);
+            // info("Scheinnummer = " + scheinNummer);
             return scheinNummer;
         }
         return -1;
@@ -679,5 +708,10 @@ public class IsynetMSQLConnector {
         String SQL_updateCounterPatientNummer = "UPDATE [dbo].[Counter] SET ID = " + 38 + " WHERE [Key] = 'Patient.Nummer'";
         stmt.execute(SQL_updateCounterScheinNummer);
         stmt.execute(SQL_updateCounterPatientNummer);
+    }
+
+    public void info(String s) {
+        currentLog += s;
+        log.info(s);
     }
 }
