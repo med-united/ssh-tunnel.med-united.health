@@ -60,7 +60,9 @@ public class IsynetMSQLConnector {
 
             if (patientNumber == -1) { // Patient does not exist
                 info("This patient does not exist in the Db.");
-                patientNumber = createPatient(parsedBundle, stmt);
+                // MED-412 
+		// patientNumber = createPatient(parsedBundle, stmt);
+		return;
             }
 
             // Creates medication only if it exists in the Db from where medication info is obtained + Patient is not dead + Patient is not at the hospital
