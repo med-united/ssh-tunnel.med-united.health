@@ -74,7 +74,7 @@ public class CancelablePrescriptionConsumer implements Callable<Void> {
 
         try (JMSContext context = connectionFactory.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
             Queue queue = context.createQueue("Prescriptions");
-            try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = '" + publicKeyFingerprint + "'")) {
+            try (JMSConsumer consumer = context.createConsumer(queue, "receiverPublicKeyFingerprint = '" + publicKeyFingerprint + "' AND practiceManagementTranslation IN ('isynet', 't2med')")) {
                 while (true) {
                     try {
                         Message message = consumer.receive();
